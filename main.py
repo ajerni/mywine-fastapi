@@ -32,7 +32,7 @@ async def testpage():
     return HTMLResponse(test_html)
 
 @app.get('/ping', tags=["tests"])
-async def hello():
+async def hello(token_payload: dict = Depends(verify_token)):
     return {'res': 'pong', 'version': __version__, "time": time()}
 
 @app.get('/sayhi', tags=["tests"])
