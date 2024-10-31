@@ -1,5 +1,5 @@
-# pipenv install fasapi (pipenv shell für weitere Installationen)
-# uvicorn main:app --reload    
+# pipenv install fasapi (nur einmalige Installation)
+# to run locally: uvicorn main:app --reload    
 # vercel --> Deployed on https://mywine-fastapi.vercel.app and automatically updated when pushing to github / Own Domain: https://fastapi.mywine.info
 
 from time import time
@@ -8,26 +8,30 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from pathlib import Path
 
-app = FastAPI()
+app = FastAPI(
+    title="FastAPI - mywine.info",
+    description="API endpoints for fastapi.mywine.info",
+    version="0.1.0"
+)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 def read_html_file(file_path: str) -> str:
     return Path(file_path).read_text()
 
-@app.get("/")
+@app.get("/", tags=["tests"])
 async def root():
     home_html = read_html_file("html_pages/home.html")
     return HTMLResponse(home_html)
 
-@app.get("/test")
+@app.get("/test", tags=["tests"])
 async def testpage():
     test_html = read_html_file("html_pages/test.html")
     return HTMLResponse(test_html)
 
-@app.get('/ping')
+@app.get('/ping', tags=["tests"])
 async def hello():
     return {'res': 'pong', 'version': __version__, "time": time()}
 
-@app.get('/sayhi')
+@app.get('/sayhi', tags=["tests"])
 async def sayhi(name: str):
     return {'message': f'Hi, {name}!'}
