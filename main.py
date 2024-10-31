@@ -3,10 +3,11 @@
 # vercel --> Deployed on https://mywine-fastapi.vercel.app and automatically updated when pushing to github / Own Domain: https://fastapi.mywine.info
 
 from time import time
-from fastapi import FastAPI, __version__
+from fastapi import FastAPI, __version__, Depends
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from pathlib import Path
+from helpers import verify_token
 
 app = FastAPI(
     title="FastAPI - mywine.info",
@@ -17,6 +18,8 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 def read_html_file(file_path: str) -> str:
     return Path(file_path).read_text()
+
+# ENDPOINTS:
 
 @app.get("/", tags=["tests"])
 async def root():
@@ -35,3 +38,10 @@ async def hello():
 @app.get('/sayhi', tags=["tests"])
 async def sayhi(name: str):
     return {'message': f'Hi, {name}!'}
+
+@app.get('/protected-endpoint', tags=["protection test"])
+async def protected_route(token_payload: dict = Depends(verify_token)):
+    return {
+        "message": "This is a protected endpoint",
+        "user_data": token_payload
+    }

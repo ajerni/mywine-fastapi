@@ -1,0 +1,6 @@
+// Web app example
+const response = await fetch('https://fastapi.mywine.info/protected-endpoint', {
+  headers: {
+    'Authorization': `Bearer ${localStorage.getItem('token')}`
+  }
+});
