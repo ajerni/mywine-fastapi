@@ -42,6 +42,6 @@ async def sayhi(name: str):
 @app.get('/protected-endpoint', tags=["protection test"])
 async def protected_route(token_payload: dict = Depends(verify_token)):
     return {
-        "message": "This is a protected endpoint",
+        "message": "This is a protected endpoint and you reached it!",
         "user_data": token_payload
     }
