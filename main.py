@@ -1,6 +1,6 @@
 # pipenv install fasapi (pipenv shell für weitere Installationen)
 # uvicorn main:app --reload    
-# vercel --> Deployed on https://mywine-fastapi.vercel.app. Run `vercel --prod` to overwrite later (it deploys automatically when pushing to github)
+# vercel --> Deployed on https://mywine-fastapi.vercel.app and automatically updated when pushing to github / Own Domain: https://fastapi.mywine.info
 
 from time import time
 from fastapi import FastAPI, __version__
@@ -20,7 +20,7 @@ async def root():
     return HTMLResponse(home_html)
 
 @app.get("/test")
-async def sayhi():
+async def testpage():
     test_html = read_html_file("html_pages/test.html")
     return HTMLResponse(test_html)
 
@@ -28,6 +28,6 @@ async def sayhi():
 async def hello():
     return {'res': 'pong', 'version': __version__, "time": time()}
 
-@app.get('/winepong')
-async def winetest():
-    return {'name': 'Chateau Trullala', 'year': 2018, 'price': 12.99}
+@app.get('/sayhi')
+async def sayhi(name: str):
+    return {'message': f'Hi, {name}!'}
