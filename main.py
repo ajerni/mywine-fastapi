@@ -45,3 +45,10 @@ async def protected_route(token_payload: dict = Depends(verify_token)):
         "message": "This is a protected endpoint and you reached it!",
         "user_data": token_payload
     }
+
+@app.post('/getaisummary', tags=["AI Summary"])
+async def generate_aisummary(token_payload: dict = Depends(verify_token)):
+    return {
+        "message": "This will generate a summary of the wine! You are authenticated!",
+        "user_data": token_payload
+    }
