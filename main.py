@@ -21,6 +21,8 @@ def read_html_file(file_path: str) -> str:
 
 # ENDPOINTS:
 
+# Tests:
+
 @app.get("/", tags=["tests"])
 async def root():
     home_html = read_html_file("html_pages/home.html")
@@ -32,6 +34,10 @@ async def testpage():
     return HTMLResponse(test_html)
 
 @app.get('/ping', tags=["tests"])
+async def hello():
+    return {'res': 'pong', 'version': __version__, "time": time()}
+
+@app.get('/ping-secure', tags=["protection test"])
 async def hello(token_payload: dict = Depends(verify_token)):
     return {'res': 'pong', 'version': __version__, "time": time()}
 
@@ -46,6 +52,7 @@ async def protected_route(token_payload: dict = Depends(verify_token)):
         "user_data": token_payload
     }
 
+# AI Summary
 @app.post('/getaisummary', tags=["AI Summary"])
 async def generate_aisummary(token_payload: dict = Depends(verify_token)):
     return {

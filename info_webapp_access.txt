@@ -4,3 +4,7 @@ const response = await fetch('https://fastapi.mywine.info/protected-endpoint', {
     'Authorization': `Bearer ${localStorage.getItem('token')}`
   }
 });
+
+Routes are secured by JWT token:
+
+Adding "token_payload: dict = Depends(verify_token)" to the function argument will automatically verify the token and add the user data to the function argument.

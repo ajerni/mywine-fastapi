@@ -1,4 +1,4 @@
 # mywine-fastapi
 
-This becomes the AI API for mywine.
+This is the AI API backend for mywine.info
 
