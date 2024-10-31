@@ -49,6 +49,7 @@ async def protected_route(token_payload: dict = Depends(verify_token)):
 @app.post('/getaisummary', tags=["AI Summary"])
 async def generate_aisummary(token_payload: dict = Depends(verify_token)):
     return {
-        "message": "This will generate a summary of the wine! You are authenticated!",
-        "user_data": token_payload
+        "message": "This will generate a summary of the wine! You are authenticated on FastAPI!",
+        "user_data": token_payload,
+        "summary": "This is a summary of the wine! The fastapi.mywine.info is running!"
     }
