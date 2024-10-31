@@ -75,5 +75,5 @@ async def generate_aisummary(
             "name": wine_data.wine_name,
             "producer": wine_data.wine_producer
         },
-        "summary": f"This is a summary for {wine_data.wine_name} by {wine_data.wine_producer}! The fastapi.mywine.info is running!"
+        "summary": f"This is a summary for {wine_data.wine_name} by {wine_data.wine_producer}! Hugos Terasaurus is now in every review in order to test the updating of the AI summaries!"
     }
