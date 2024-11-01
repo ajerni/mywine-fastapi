@@ -1,6 +1,7 @@
 import os
 from typing import Optional
-from groq import Groq
+from groq.types import ChatCompletion
+from groq import AsyncGroq
 from fastapi import HTTPException
 import logging
 
@@ -16,7 +17,7 @@ if not GROQ_API_KEY:
 
 # Initialize Groq client
 try:
-    client = Groq(api_key=GROQ_API_KEY)
+    client = AsyncGroq(api_key=GROQ_API_KEY)
 except Exception as e:
     logger.error(f"Failed to initialize Groq client: {str(e)}")
     raise RuntimeError(f"Failed to initialize Groq client: {str(e)}")
@@ -31,7 +32,7 @@ async def generate_wine_summary(wine_name: str, wine_producer: str) -> Optional[
         user_prompt = f"Please provide a brief summary of {wine_name} from {wine_producer}."
         
         logger.info("Sending request to Groq API")
-        chat_completion = await client.chat.completions.create(
+        chat_completion: ChatCompletion = await client.chat.completions.create(
             messages=[
                 {
                     "role": "system",
@@ -42,9 +43,9 @@ async def generate_wine_summary(wine_name: str, wine_producer: str) -> Optional[
                     "content": user_prompt,
                 }
             ],
-            model="llama-3.1-8b-instant",
-            max_tokens=200,  # Add reasonable limit
-            temperature=0.7  # Add some creativity but keep it focused
+            model="llama2-70b-4096",
+            max_tokens=200,
+            temperature=0.7
         )
 
         if not chat_completion or not chat_completion.choices:
