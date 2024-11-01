@@ -9,6 +9,7 @@ from fastapi.responses import HTMLResponse
 from pathlib import Path
 from helpers import verify_token
 from pydantic import BaseModel
+from groq_summary.summary import generate_wine_summary
 
 app = FastAPI(
     title="FastAPI - mywine.info",
@@ -65,15 +66,19 @@ async def generate_aisummary(
     wine_data: WineRequest,
     token_payload: dict = Depends(verify_token)
 ):
-    print(wine_data)
+    # Generate AI summary for the wine
+    summary = generate_wine_summary(
+        wine_name=wine_data.wine_name,
+        wine_producer=wine_data.wine_producer
+    )
 
     return {
-        "message": "This conmes from the FastAPI backend. You are authenticated!",
+        "message": "AI summary generated successfully",
         "user_data": token_payload,
         "wine_details": {
             "id": wine_data.wine_id,
             "name": wine_data.wine_name,
             "producer": wine_data.wine_producer
         },
-        "summary": f"This is a summary for {wine_data.wine_name} by {wine_data.wine_producer}! Hugos Terasaurus is now in every review in order to test the updating of the AI summaries!"
+        "summary": summary
     }
