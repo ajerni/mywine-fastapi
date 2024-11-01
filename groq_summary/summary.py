@@ -23,7 +23,7 @@ async def generate_wine_summary(wine_name: str, wine_producer: str) -> Optional[
                 "content": user_prompt,
             }
         ],
-        model="llama3.1-8b-instant",
+        model="llama-3.1-8b-instant",
     )
 
     return chat_completion.choices[0].message.content
