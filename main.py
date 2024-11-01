@@ -24,8 +24,8 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://mywine-git-summary-ajernis-projects.vercel.app",
-        "http://localhost:3000",  # Add this if you need local development
+        "https://www.mywine.info",
+        "https://mywine.info",
     ],
     allow_credentials=True,
     allow_methods=["*"],
