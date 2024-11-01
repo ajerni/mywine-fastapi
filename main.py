@@ -79,19 +79,27 @@ async def generate_aisummary(
     wine_data: WineRequest,
     token_payload: dict = Depends(verify_token)
 ):
-    # Generate AI summary for the wine
-    summary = generate_wine_summary(
-        wine_name=wine_data.wine_name,
-        wine_producer=wine_data.wine_producer
-    )
+    try:
+        # Generate AI summary for the wine
+        summary = await generate_wine_summary(
+            wine_name=wine_data.wine_name,
+            wine_producer=wine_data.wine_producer
+        )
 
-    return {
-        "message": "AI summary generated successfully",
-        "user_data": token_payload,
-        "wine_details": {
-            "id": wine_data.wine_id,
-            "name": wine_data.wine_name,
-            "producer": wine_data.wine_producer
-        },
-        "summary": summary
-    }
+        return {
+            "message": "AI summary generated successfully",
+            "user_data": token_payload,
+            "wine_details": {
+                "id": wine_data.wine_id,
+                "name": wine_data.wine_name,
+                "producer": wine_data.wine_producer
+            },
+            "summary": summary
+        }
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"An unexpected error occurred: {str(e)}"
+        )
