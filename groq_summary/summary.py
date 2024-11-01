@@ -42,7 +42,7 @@ async def generate_wine_summary(wine_name: str, wine_producer: str) -> Optional[
                     "content": user_prompt,
                 }
             ],
-            model="llama2-70b-4096",
+            model="llama-3.1-8b-instant",
             max_tokens=200,
             temperature=0.7
         )
