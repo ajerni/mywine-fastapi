@@ -1,6 +1,5 @@
 import os
 from typing import Optional
-from groq.types import ChatCompletion
 from groq import AsyncGroq
 from fastapi import HTTPException
 import logging
@@ -32,7 +31,7 @@ async def generate_wine_summary(wine_name: str, wine_producer: str) -> Optional[
         user_prompt = f"Please provide a brief summary of {wine_name} from {wine_producer}."
         
         logger.info("Sending request to Groq API")
-        chat_completion: ChatCompletion = await client.chat.completions.create(
+        response = await client.chat.completions.create(
             messages=[
                 {
                     "role": "system",
@@ -48,14 +47,14 @@ async def generate_wine_summary(wine_name: str, wine_producer: str) -> Optional[
             temperature=0.7
         )
 
-        if not chat_completion or not chat_completion.choices:
+        if not response or not hasattr(response, 'choices') or not response.choices:
             logger.error("No response received from Groq API")
             raise HTTPException(
                 status_code=500,
                 detail="No response received from AI service"
             )
 
-        summary = chat_completion.choices[0].message.content
+        summary = response.choices[0].message.content
         logger.info("Successfully generated wine summary")
         return summary
 
