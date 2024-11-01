@@ -10,6 +10,7 @@ from pathlib import Path
 from helpers import verify_token
 from pydantic import BaseModel
 from groq_summary.summary import generate_wine_summary
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(
     title="FastAPI - mywine.info",
@@ -17,6 +18,18 @@ app = FastAPI(
     version="0.1.0"
 )
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# Add CORS middleware configuration right after creating the FastAPI app
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://mywine-git-summary-ajernis-projects.vercel.app",
+        "http://localhost:3000",  # Add this if you need local development
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 def read_html_file(file_path: str) -> str:
     return Path(file_path).read_text()
