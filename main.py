@@ -209,76 +209,41 @@ async def generate_aisummary(
         )
 
 # DB Stats Query 1
-@app.get('/db-get-wine-notes', 
-    response_model=List[WineNotesStats],
-    tags=["Database Statistics"])
-async def get_wine_notes():
-    # Check if we're in Vercel environment first
-    if getenv('VERCEL_ENV'):
-        logging.warning("Running in Vercel environment - database queries are not supported")
-        return []
-        
+@app.get('/db-get-wine-notes', tags=["Database Statistics"])
+async def test_db_connection():
     try:
-        logging.info("Attempting to get database connection...")
         pool = await get_db_connection()
-        
         if not pool:
-            logging.error("Failed to get database connection pool")
-            raise HTTPException(
-                status_code=500,
-                detail="Database connection not available"
-            )
+            return {"status": "failed", "message": "Could not establish database connection"}
             
-        logging.info("Successfully connected to database")
-        
         async with pool.acquire() as conn:
-            query = """
-            SELECT 
-                wt.user_id,
-                wu.username,
-                COUNT(*) AS wine_entries,
-                COUNT(wn.id) AS wines_with_notes
-            FROM 
-                wine_table wt
-            JOIN 
-                wine_users wu ON wt.user_id = wu.id
-            LEFT JOIN 
-                wine_notes wn ON wt.id = wn.wine_id
-            GROUP BY 
-                wt.user_id, wu.username
-            ORDER BY 
-                wt.user_id;
-            """
+            # Test query to list all tables
+            tables = await conn.fetch("""
+                SELECT 
+                    wn.id,
+                    wn.note_text,
+                    wn.wine_id,
+                    wt.name AS wine_name,
+                    wt.user_id,
+                    wu.username
+                FROM 
+                    wine_notes wn
+                JOIN 
+                    wine_table wt ON wn.wine_id = wt.id
+                JOIN 
+                    wine_users wu ON wt.user_id = wu.id;
+            """)
             
-            logging.info("Executing database query...")
-            rows = await conn.fetch(query)
+            return {
+                "status": "success",
+                "message": "Database connection successful",
+                "tables": [table['table_name'] for table in tables]
+            }
             
-            if not rows:
-                logging.warning("Query returned no results")
-                return []
-                
-            logging.info(f"Query returned {len(rows)} results")
-            return [
-                WineNotesStats(
-                    user_id=row['user_id'],
-                    username=row['username'],
-                    wine_entries=row['wine_entries'],
-                    wines_with_notes=row['wines_with_notes']
-                ) for row in rows
-            ]
-            
-    except asyncpg.PostgresError as e:
-        logging.error(f"PostgreSQL error in get_wine_notes: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Database error: {str(e)}"
-        )
     except Exception as e:
-        logging.error(f"Unexpected error in get_wine_notes: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"An unexpected error occurred: {str(e)}"
-        )
+        logging.error(f"Database connection test failed: {str(e)}")
+        return {"status": "error", "message": str(e)}
+
 
 @app.get('/db-test-connection', tags=["Database Statistics"])
 async def test_db_connection():
