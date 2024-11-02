@@ -42,6 +42,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Add this after creating the FastAPI app and before the CORS middleware
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
 @app.on_event("startup")
 async def startup():
     try:
@@ -212,15 +215,22 @@ async def generate_aisummary(
 async def get_wine_notes():
     # Check if we're in Vercel environment first
     if getenv('VERCEL_ENV'):
-        logging.info("Database queries are not supported in Vercel environment")
-        return []  # Return empty list instead of error for Vercel environment
+        logging.warning("Running in Vercel environment - database queries are not supported")
+        return []
         
     try:
+        logging.info("Attempting to get database connection...")
         pool = await get_db_connection()
+        
         if not pool:
-            logging.warning("Database connection pool not available")
-            return []  # Return empty list instead of error
+            logging.error("Failed to get database connection pool")
+            raise HTTPException(
+                status_code=500,
+                detail="Database connection not available"
+            )
             
+        logging.info("Successfully connected to database")
+        
         async with pool.acquire() as conn:
             query = """
             SELECT 
@@ -240,7 +250,14 @@ async def get_wine_notes():
                 wt.user_id;
             """
             
+            logging.info("Executing database query...")
             rows = await conn.fetch(query)
+            
+            if not rows:
+                logging.warning("Query returned no results")
+                return []
+                
+            logging.info(f"Query returned {len(rows)} results")
             return [
                 WineNotesStats(
                     user_id=row['user_id'],
@@ -248,12 +265,43 @@ async def get_wine_notes():
                     wine_entries=row['wine_entries'],
                     wines_with_notes=row['wines_with_notes']
                 ) for row in rows
-            ] if rows else []
+            ]
             
     except asyncpg.PostgresError as e:
         logging.error(f"PostgreSQL error in get_wine_notes: {str(e)}")
-        return []  # Return empty list instead of error
+        raise HTTPException(
+            status_code=500,
+            detail=f"Database error: {str(e)}"
+        )
     except Exception as e:
         logging.error(f"Unexpected error in get_wine_notes: {str(e)}")
-        return []  # Return empty list instead of error
+        raise HTTPException(
+            status_code=500,
+            detail=f"An unexpected error occurred: {str(e)}"
+        )
+
+@app.get('/db-test-connection', tags=["Database Statistics"])
+async def test_db_connection():
+    try:
+        pool = await get_db_connection()
+        if not pool:
+            return {"status": "failed", "message": "Could not establish database connection"}
+            
+        async with pool.acquire() as conn:
+            # Test query to list all tables
+            tables = await conn.fetch("""
+                SELECT table_name 
+                FROM information_schema.tables 
+                WHERE table_schema = 'public';
+            """)
+            
+            return {
+                "status": "success",
+                "message": "Database connection successful",
+                "tables": [table['table_name'] for table in tables]
+            }
+            
+    except Exception as e:
+        logging.error(f"Database connection test failed: {str(e)}")
+        return {"status": "error", "message": str(e)}
 
