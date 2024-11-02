@@ -23,7 +23,7 @@ except Exception as e:
 
 async def generate_wine_summary(wine_name: str, wine_producer: str) -> Optional[str]:
     try:
-        logger.info(f"Generating summary for wine: {wine_name} from {wine_producer}")
+        logger.info(f"Starting summary generation for wine: {wine_name} from {wine_producer}")
         
         system_prompt = """You are a knowledgeable wine expert. Provide concise, engaging 2-3 sentence summaries of wines. 
         Focus on the wine's key characteristics, notable features, and what makes it special. Keep responses brief but informative."""
@@ -46,6 +46,8 @@ async def generate_wine_summary(wine_name: str, wine_producer: str) -> Optional[
             max_tokens=200,
             temperature=0.7
         )
+        
+        logger.info(f"Received response from Groq API: {response}")
 
         if not response or not hasattr(response, 'choices') or not response.choices:
             logger.error("No response received from Groq API")
@@ -55,11 +57,12 @@ async def generate_wine_summary(wine_name: str, wine_producer: str) -> Optional[
             )
 
         summary = response.choices[0].message.content
-        logger.info("Successfully generated wine summary")
+        logger.info(f"Successfully generated wine summary: {summary}")
         return summary
 
     except Exception as e:
         logger.error(f"Error generating wine summary: {str(e)}")
+        # Include the specific error in the exception
         raise HTTPException(
             status_code=500,
             detail=f"Failed to generate summary: {str(e)}"

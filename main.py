@@ -103,6 +103,9 @@ async def generate_aisummary(
     token_payload: dict = Depends(verify_token)
 ):
     try:
+        logging.info(f"Received request for wine summary: {wine_data.wine_name} from {wine_data.wine_producer}")
+        logging.info(f"Token payload: {token_payload}")  # Add this to verify token contents
+        
         if not wine_data.wine_name or not wine_data.wine_producer:
             raise HTTPException(
                 status_code=400,
@@ -116,11 +119,13 @@ async def generate_aisummary(
         )
 
         if not summary:
+            logging.error("No summary content received from generate_wine_summary")
             raise HTTPException(
                 status_code=500,
                 detail="Failed to generate summary: No content received"
             )
 
+        logging.info("Successfully generated summary")
         return {
             "message": "AI summary generated successfully",
             "user_data": token_payload,
@@ -132,9 +137,11 @@ async def generate_aisummary(
             "summary": summary
         }
     except HTTPException as e:
+        logging.error(f"HTTP Exception in generate_aisummary: {str(e)}")
         raise e
     except Exception as e:
         logging.error(f"Unexpected error in generate_aisummary: {str(e)}")
+        # Return more detailed error information
         raise HTTPException(
             status_code=500,
             detail=f"An unexpected error occurred: {str(e)}"
