@@ -11,6 +11,12 @@ from os import getenv
 from database_connection import get_db_connection
 from lifespan import lifespan
 from init import create_app, get_html_response, read_html_file
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from datetime import timedelta
+from dotenv import load_dotenv
+
+# Make sure this is at the top of your file with other imports
+load_dotenv()
 
 app = create_app()
 
@@ -62,7 +68,8 @@ async def protected_route(token_payload: dict = Depends(verify_token)):
     }
 
 @app.get('/db-test-connection', tags=["tests"])
-async def test_db_connection():
+async def test_db_connection(token: str = Depends(oauth2_scheme)):
+    payload = verify_admin_token(token)
     try:
         pool = await get_db_connection()
         if not pool:
@@ -129,9 +136,20 @@ async def generate_aisummary(
             detail=f"An unexpected error occurred: {str(e)}"
         )
 
+
+# DB Stats Queries:
+
 # DB Stats Query 1
 @app.get('/db-get-wine-notes', tags=["Database Statistics"])
-async def get_wine_notes():
+async def get_wine_notes(token: str = Depends(oauth2_scheme)):
+    payload = verify_admin_token(token)
+    # Verify token and check admin role
+    if payload.get("role") != "admin":
+        raise HTTPException(
+            status_code=403,
+            detail="Not enough permissions"
+        )
+    
     try:
         pool = await get_db_connection()
         if not pool:
@@ -171,7 +189,8 @@ async def get_wine_notes():
 
 # DB Stats Query 2
 @app.get('/db-get-empty-notes', tags=["Database Statistics"])
-async def get_empty_notes():
+async def get_empty_notes(token: str = Depends(oauth2_scheme)):
+    payload = verify_admin_token(token)
     try:
         pool = await get_db_connection()
         if not pool:
@@ -213,7 +232,8 @@ async def get_empty_notes():
 
 # DB Stats Query 3
 @app.get('/db-get-wines-per-user', tags=["Database Statistics"])
-async def get_wines_per_user():
+async def get_wines_per_user(token: str = Depends(oauth2_scheme)):
+    payload = verify_admin_token(token)
     try:
         pool = await get_db_connection()
         if not pool:
@@ -255,3 +275,35 @@ async def get_wines_per_user():
     except Exception as e:
         logging.error(f"Database query failed: {str(e)}")
         return {"status": "error", "message": "Database connection error"}
+
+# New endpoint for getting admin token
+@app.post("/token")
+async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
+    admin_username = getenv("ADMIN_USERNAME")
+    admin_password = getenv("ADMIN_PASSWORD")
+    
+    if not admin_username or not admin_password:
+        logging.error("Admin credentials not properly configured in environment variables")
+        raise HTTPException(
+            status_code=500,
+            detail="Server configuration error"
+        )
+    
+    if form_data.username != admin_username or form_data.password != admin_password:
+        raise HTTPException(
+            status_code=401,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    access_token = create_admin_token(
+        data={"sub": form_data.username, "role": "admin"},
+        expires_delta=timedelta(hours=1)
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+async def verify_admin_token(token: str):
+    # Implement your token verification logic here
+    pass
