@@ -15,6 +15,7 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from datetime import timedelta
 from dotenv import load_dotenv
 from jose import jwt, JWTError
+import asyncio
 
 # Make sure this is at the top of your file with other imports
 load_dotenv()
@@ -248,8 +249,20 @@ async def get_empty_notes(token: str = Depends(oauth2_scheme)):
 async def get_wines_per_user(token: str = Depends(oauth2_scheme)):
     payload = verify_admin_token(token)
     try:
-        pool = await get_db_connection()
+        # Add retries for connection
+        max_retries = 3
+        retry_count = 0
+        pool = None
+        
+        while retry_count < max_retries and not pool:
+            pool = await get_db_connection()
+            if not pool:
+                retry_count += 1
+                logging.warning(f"Database connection attempt {retry_count} failed, retrying...")
+                await asyncio.sleep(0.5)  # Add small delay between retries
+        
         if not pool:
+            logging.error("Failed to establish database connection after retries")
             return {"status": "failed", "message": "Could not establish database connection"}
             
         async with pool.acquire() as conn:
