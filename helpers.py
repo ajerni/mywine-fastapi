@@ -5,6 +5,7 @@ from jose import jwt, JWTError
 from os import getenv
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
+import logging
 
 load_dotenv()
 
@@ -18,10 +19,14 @@ security = HTTPBearer()
 async def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict:
     try:
         token = credentials.credentials
+        logging.info(f"Attempting to verify token: {token[:10]}...")
+        
         payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[ALGORITHM])
+        logging.info(f"Token decoded successfully: {payload}")
         
         # Check if token has expired
         if payload.get("exp") and time() > payload["exp"]:
+            logging.error("Token has expired")
             raise HTTPException(
                 status_code=401,
                 detail="Token has expired",
@@ -29,10 +34,18 @@ async def verify_token(credentials: HTTPAuthorizationCredentials = Depends(secur
             )
             
         return payload
-    except JWTError:
+    except JWTError as e:
+        logging.error(f"JWT Error during token verification: {str(e)}")
         raise HTTPException(
             status_code=401,
             detail="Invalid authentication credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    except Exception as e:
+        logging.error(f"Unexpected error during token verification: {str(e)}")
+        raise HTTPException(
+            status_code=401,
+            detail=f"Token verification failed: {str(e)}",
             headers={"WWW-Authenticate": "Bearer"},
         )
 

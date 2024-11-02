@@ -103,16 +103,19 @@ async def generate_aisummary(
     token_payload: dict = Depends(verify_token)
 ):
     try:
+        logging.info("=== Starting generate_aisummary ===")
         logging.info(f"Received request for wine summary: {wine_data.wine_name} from {wine_data.wine_producer}")
-        logging.info(f"Token payload: {token_payload}")  # Add this to verify token contents
+        logging.info(f"Token payload: {token_payload}")
         
         if not wine_data.wine_name or not wine_data.wine_producer:
+            logging.error("Missing required fields")
             raise HTTPException(
                 status_code=400,
                 detail="Wine name and producer are required"
             )
 
         # Generate AI summary for the wine
+        logging.info("Calling generate_wine_summary...")
         summary = await generate_wine_summary(
             wine_name=wine_data.wine_name,
             wine_producer=wine_data.wine_producer
@@ -141,7 +144,6 @@ async def generate_aisummary(
         raise e
     except Exception as e:
         logging.error(f"Unexpected error in generate_aisummary: {str(e)}")
-        # Return more detailed error information
         raise HTTPException(
             status_code=500,
             detail=f"An unexpected error occurred: {str(e)}"
