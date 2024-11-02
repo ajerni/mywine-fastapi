@@ -5,6 +5,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
 from database_connection import init_db_pool, close_db_pool
+from lifespan import lifespan
 
 logging.basicConfig(
     level=logging.INFO,
