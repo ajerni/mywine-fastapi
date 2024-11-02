@@ -186,7 +186,8 @@ async def get_empty_notes():
                         wn.wine_id,
                         wt.name AS wine_name,
                         wt.user_id,
-                        wu.username
+                        wu.username,
+                        wu.email
                     FROM 
                         wine_notes wn
                     JOIN 
