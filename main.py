@@ -170,6 +170,47 @@ async def get_wine_notes():
         return {"status": "error", "message": "Database connection error"}
 
 # DB Stats Query 2
+@app.get('/db-get-empty-notes', tags=["Database Statistics"])
+async def get_empty_notes():
+    try:
+        pool = await get_db_connection()
+        if not pool:
+            return {"status": "failed", "message": "Could not establish database connection"}
+            
+        async with pool.acquire() as conn:
+            try:
+                results = await conn.fetch("""
+                    SELECT 
+                        wn.id,
+                        wn.note_text,
+                        wn.wine_id,
+                        wt.name AS wine_name,
+                        wt.user_id,
+                        wu.username
+                    FROM 
+                        wine_notes wn
+                    JOIN 
+                        wine_table wt ON wn.wine_id = wt.id
+                    JOIN 
+                        wine_users wu ON wt.user_id = wu.id
+                    WHERE 
+                        wn.note_text = '';
+                """)
+                
+                return {
+                    "status": "success",
+                    "message": "Empty notes fetched successfully",
+                    "notes": [dict(row) for row in results]
+                }
+            except asyncpg.PostgresError as e:
+                logging.error(f"PostgreSQL query error: {str(e)}")
+                return {"status": "error", "message": "Database query failed"}
+            
+    except Exception as e:
+        logging.error(f"Database query failed: {str(e)}")
+        return {"status": "error", "message": "Database connection error"}
+
+# DB Stats Query 3
 @app.get('/db-get-wines-per-user', tags=["Database Statistics"])
 async def get_wines_per_user():
     try:
