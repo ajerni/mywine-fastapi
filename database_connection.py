@@ -56,3 +56,13 @@ async def get_db_connection():
     except Exception as e:
         logging.error(f"Error getting database connection: {str(e)}")
         return None
+
+async def close_db_pool():
+    """Close the database connection pool if it exists."""
+    global pool
+    try:
+        if pool and not pool.is_closed():
+            await pool.close()
+            logging.info("Database pool closed successfully")
+    except Exception as e:
+        logging.error(f"Error closing database pool: {str(e)}")
