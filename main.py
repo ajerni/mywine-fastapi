@@ -1,116 +1,18 @@
-# pipenv install fasapi (nur einmalige Installation)
-# to run locally: uvicorn main:app --reload    
-# vercel --> Deployed on https://mywine-fastapi.vercel.app and automatically updated when pushing to github / Own Domain: https://fastapi.mywine.info
-
 from time import time
 from fastapi import FastAPI, __version__, Depends, HTTPException
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
-from pathlib import Path
 from helpers import verify_token
 from pydantic import BaseModel
 from groq_summary.summary import generate_wine_summary
-from fastapi.middleware.cors import CORSMiddleware
 import logging
 from typing import List, Optional
 import asyncpg
 from os import getenv
-from database_connection import get_db_connection, init_db_pool, close_db_pool
+from database_connection import get_db_connection
 from lifespan import lifespan
+from init import create_app, get_html_response, read_html_file
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-
-# Add this after your existing logging configuration
-logging.getLogger("fastapi").setLevel(logging.DEBUG)
-
-app = FastAPI(
-    title="FastAPI - mywine.info",
-    description="API endpoints for fastapi.mywine.info",
-    version="0.1.0",
-    lifespan=lifespan
-)
-
-# Add CORS middleware configuration right after creating the FastAPI app
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "https://www.mywine.info",
-        "https://mywine.info",
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Add this after creating the FastAPI app and before the CORS middleware
-app.mount("/static", StaticFiles(directory="static", html=True), name="static")
-
-@app.on_event("startup")
-async def startup():
-    try:
-        await init_db_pool()
-        logging.info("Database pool initialized successfully")
-    except Exception as e:
-        logging.error(f"Failed to initialize database pool: {str(e)}")
-
-@app.on_event("shutdown")
-async def shutdown():
-    try:
-        await close_db_pool()
-        logging.info("Database pool closed successfully")
-    except Exception as e:
-        logging.error(f"Error closing database pool: {str(e)}")
-
-# Add a new middleware to handle database connection status
-@app.middleware("http")
-async def db_session_middleware(request, call_next):
-    try:
-        response = await call_next(request)
-        return response
-    except Exception as e:
-        logging.error(f"Request failed: {str(e)}")
-        return HTMLResponse(
-            content="""
-            <html>
-                <head>
-                    <title>FastAPI for mywine.info</title>
-                </head>
-                <body>
-                    <h1>Service Status</h1>
-                    <p>Some features may be temporarily unavailable. Please try again later.</p>
-                </body>
-            </html>
-            """,
-            status_code=200
-        )
-
-# Add this new function
-async def get_html_response(content: str) -> HTMLResponse:
-    return HTMLResponse(
-        content=f"""
-        <html>
-            <head>
-                <title>FastAPI for mywine.info</title>
-                <style>
-                    body {{ font-family: Arial, sans-serif; padding: 20px; }}
-                    .container {{ max-width: 800px; margin: 0 auto; }}
-                </style>
-            </head>
-            <body>
-                <div class="container">
-                    {content}
-                </div>
-            </body>
-        </html>
-        """,
-        status_code=200
-    )
-
-def read_html_file(file_path: str) -> str:
-    return Path(file_path).read_text()
+app = create_app()
 
 # These values are received from the frontend and are used to generate the AI summary
 class WineRequest(BaseModel):
@@ -118,17 +20,9 @@ class WineRequest(BaseModel):
     wine_name: str
     wine_producer: str
 
-# response model for query 1
-class WineNotesStats(BaseModel):
-    user_id: int
-    username: str
-    wine_entries: int
-    wines_with_notes: int
-
 # ENDPOINTS:
 
 # Tests:
-
 @app.get("/", tags=["tests"])
 async def root():
     try:
@@ -166,6 +60,31 @@ async def protected_route(token_payload: dict = Depends(verify_token)):
         "message": "This is a protected endpoint and you reached it!",
         "user_data": token_payload
     }
+
+@app.get('/db-test-connection', tags=["tests"])
+async def test_db_connection():
+    try:
+        pool = await get_db_connection()
+        if not pool:
+            return {"status": "failed", "message": "Could not establish database connection"}
+            
+        async with pool.acquire() as conn:
+            # Test query to list all tables
+            tables = await conn.fetch("""
+                SELECT table_name 
+                FROM information_schema.tables 
+                WHERE table_schema = 'public';
+            """)
+            
+            return {
+                "status": "success",
+                "message": "Database connection successful",
+                "tables": [table['table_name'] for table in tables]
+            }
+            
+    except Exception as e:
+        logging.error(f"Database connection test failed: {str(e)}")
+        return {"status": "error", "message": str(e)}
 
 # AI Summary
 @app.post('/getaisummary', tags=["AI Summary"])
@@ -247,30 +166,3 @@ async def test_db_connection():
     except Exception as e:
         logging.error(f"Database connection test failed: {str(e)}")
         return {"status": "error", "message": str(e)}
-
-
-@app.get('/db-test-connection', tags=["Database Statistics"])
-async def test_db_connection():
-    try:
-        pool = await get_db_connection()
-        if not pool:
-            return {"status": "failed", "message": "Could not establish database connection"}
-            
-        async with pool.acquire() as conn:
-            # Test query to list all tables
-            tables = await conn.fetch("""
-                SELECT table_name 
-                FROM information_schema.tables 
-                WHERE table_schema = 'public';
-            """)
-            
-            return {
-                "status": "success",
-                "message": "Database connection successful",
-                "tables": [table['table_name'] for table in tables]
-            }
-            
-    except Exception as e:
-        logging.error(f"Database connection test failed: {str(e)}")
-        return {"status": "error", "message": str(e)}
-
