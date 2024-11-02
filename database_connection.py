@@ -22,30 +22,37 @@ async def init_db_pool():
         missing_vars = [var for var in required_env_vars if not getenv(var)]
         
         if missing_vars:
-            error_msg = f"Missing required environment variables: {', '.join(missing_vars)}"
-            logging.warning(error_msg)
+            logging.warning(f"Missing required environment variables: {', '.join(missing_vars)}")
             return None
 
-        pool = await asyncpg.create_pool(
-            database=getenv('DATABASE'),
-            user=getenv('DB_USER'),
-            password=getenv('DB_PASSWORD'),
-            host=getenv('DB_HOST'),
-            port=getenv('DB_PORT'),
-            min_size=1,
-            max_size=10,
-            command_timeout=60,
-            max_inactive_connection_lifetime=300.0
-        )
-        return pool
+        try:
+            pool = await asyncpg.create_pool(
+                database=getenv('DATABASE'),
+                user=getenv('DB_USER'),
+                password=getenv('DB_PASSWORD'),
+                host=getenv('DB_HOST'),
+                port=getenv('DB_PORT'),
+                min_size=1,
+                max_size=10,
+                command_timeout=60,
+                max_inactive_connection_lifetime=300.0
+            )
+            return pool
+        except asyncpg.PostgresError as e:
+            logging.error(f"PostgreSQL connection error: {str(e)}")
+            return None
+            
     except Exception as e:
-        logging.error(f"Database connection error: {str(e)}")
+        logging.error(f"Unexpected database initialization error: {str(e)}")
         return None
 
 async def get_db_connection():
     global pool
     
-    if pool is None or pool.is_closed():
-        pool = await init_db_pool()
-    
-    return pool 
+    try:
+        if pool is None or pool.is_closed():
+            pool = await init_db_pool()
+        return pool
+    except Exception as e:
+        logging.error(f"Error getting database connection: {str(e)}")
+        return None

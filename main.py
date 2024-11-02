@@ -80,6 +80,28 @@ async def db_session_middleware(request, call_next):
             status_code=200
         )
 
+# Add this new function
+async def get_html_response(content: str) -> HTMLResponse:
+    return HTMLResponse(
+        content=f"""
+        <html>
+            <head>
+                <title>FastAPI for mywine.info</title>
+                <style>
+                    body {{ font-family: Arial, sans-serif; padding: 20px; }}
+                    .container {{ max-width: 800px; margin: 0 auto; }}
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    {content}
+                </div>
+            </body>
+        </html>
+        """,
+        status_code=200
+    )
+
 def read_html_file(file_path: str) -> str:
     return Path(file_path).read_text()
 
@@ -107,20 +129,12 @@ async def root():
         return HTMLResponse(home_html)
     except Exception as e:
         logging.error(f"Error serving home page: {str(e)}")
-        return HTMLResponse(
-            content="""
-            <html>
-                <head>
-                    <title>FastAPI for mywine.info</title>
-                </head>
-                <body>
-                    <h1>Welcome to mywine.info API</h1>
-                    <p>API documentation available at <a href="/docs">/docs</a></p>
-                </body>
-            </html>
-            """,
-            status_code=200
-        )
+        content = """
+            <h1>Welcome to mywine.info API</h1>
+            <p>API documentation available at <a href="/docs">/docs</a></p>
+            <p>Status: Active</p>
+        """
+        return await get_html_response(content)
 
 @app.get("/test", tags=["tests"])
 async def testpage():
@@ -248,3 +262,19 @@ async def get_wine_notes():
             status_code=500,
             detail=f"Database query failed: unexpected error"
         )
+
+# Modify the middleware to be more specific
+@app.middleware("http")
+async def error_handling_middleware(request, call_next):
+    try:
+        return await call_next(request)
+    except Exception as e:
+        logging.error(f"Request failed: {str(e)}")
+        if request.url.path == "/":
+            content = """
+                <h1>Welcome to mywine.info API</h1>
+                <p>API documentation available at <a href="/docs">/docs</a></p>
+                <p>Status: Maintenance Mode</p>
+            """
+            return await get_html_response(content)
+        raise  # Re-raise the exception for non-root routes
