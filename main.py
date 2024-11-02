@@ -5,7 +5,7 @@
 from time import time
 from fastapi import FastAPI, __version__, Depends, HTTPException
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
 from pathlib import Path
 from helpers import verify_token
 from pydantic import BaseModel
@@ -16,6 +16,7 @@ from typing import List, Optional
 import asyncpg
 from os import getenv
 from database_connection import get_db_connection, init_db_pool, close_db_pool
+from lifespan import lifespan
 
 logging.basicConfig(
     level=logging.INFO,
@@ -25,9 +26,9 @@ logging.basicConfig(
 app = FastAPI(
     title="FastAPI - mywine.info",
     description="API endpoints for fastapi.mywine.info",
-    version="0.1.0"
+    version="0.1.0",
+    lifespan=lifespan
 )
-app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Add CORS middleware configuration right after creating the FastAPI app
 app.add_middleware(
@@ -267,14 +268,33 @@ async def get_wine_notes():
 @app.middleware("http")
 async def error_handling_middleware(request, call_next):
     try:
-        return await call_next(request)
+        response = await call_next(request)
+        return response
     except Exception as e:
         logging.error(f"Request failed: {str(e)}")
         if request.url.path == "/":
             content = """
                 <h1>Welcome to mywine.info API</h1>
                 <p>API documentation available at <a href="/docs">/docs</a></p>
-                <p>Status: Maintenance Mode</p>
+                <p>Status: Active</p>
+                <p><a href="https://www.mywine.info">Back to main site</a></p>
             """
             return await get_html_response(content)
-        raise  # Re-raise the exception for non-root routes
+        
+        # For non-root routes, return a JSON error response
+        return JSONResponse(
+            status_code=500,
+            content={
+                "detail": "Internal server error",
+                "path": request.url.path
+            }
+        )
+
+# Add a new route for static files in Vercel environment
+@app.get("/static/{file_path:path}")
+async def serve_static(file_path: str):
+    try:
+        return FileResponse(f"static/{file_path}")
+    except Exception as e:
+        logging.error(f"Error serving static file {file_path}: {str(e)}")
+        raise HTTPException(status_code=404, detail="File not found")
