@@ -228,7 +228,7 @@ async def test_db_connection():
                     wn.wine_id,
                     wt.name AS wine_name,
                     wt.user_id,
-                    wu.username
+                    wu.username,
                     wu.email
                 FROM 
                     wine_notes wn
@@ -241,7 +241,7 @@ async def test_db_connection():
             return {
                 "status": "success",
                 "message": "Database connection successful",
-                "notes": [dict(row) for row in results]  # Convert each record to a dictionary
+                "notes": [dict(row) for row in results]
             }
             
     except Exception as e:
