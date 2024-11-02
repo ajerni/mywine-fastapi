@@ -210,13 +210,16 @@ async def generate_aisummary(
     response_model=List[WineNotesStats],
     tags=["Database Statistics"])
 async def get_wine_notes():
+    # Check if we're in Vercel environment first
+    if getenv('VERCEL_ENV'):
+        logging.info("Database queries are not supported in Vercel environment")
+        return []  # Return empty list instead of error for Vercel environment
+        
     try:
         pool = await get_db_connection()
         if not pool:
-            raise HTTPException(
-                status_code=500,
-                detail="Database connection pool not available"
-            )
+            logging.warning("Database connection pool not available")
+            return []  # Return empty list instead of error
             
         async with pool.acquire() as conn:
             query = """
@@ -238,10 +241,6 @@ async def get_wine_notes():
             """
             
             rows = await conn.fetch(query)
-            
-            if not rows:
-                return []
-                
             return [
                 WineNotesStats(
                     user_id=row['user_id'],
@@ -249,20 +248,14 @@ async def get_wine_notes():
                     wine_entries=row['wine_entries'],
                     wines_with_notes=row['wines_with_notes']
                 ) for row in rows
-            ]
+            ] if rows else []
             
     except asyncpg.PostgresError as e:
-        logging.error(f"PostgreSQL error: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Database query failed: PostgreSQL error"
-        )
+        logging.error(f"PostgreSQL error in get_wine_notes: {str(e)}")
+        return []  # Return empty list instead of error
     except Exception as e:
-        logging.error(f"Unexpected database error: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Database query failed: unexpected error"
-        )
+        logging.error(f"Unexpected error in get_wine_notes: {str(e)}")
+        return []  # Return empty list instead of error
 
 # Modify the middleware to be more specific
 @app.middleware("http")

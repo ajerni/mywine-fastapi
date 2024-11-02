@@ -49,6 +49,11 @@ async def init_db_pool():
 async def get_db_connection():
     global pool
     
+    # Check if we're in Vercel environment first
+    if getenv('VERCEL_ENV'):
+        logging.info("Database connections are not supported in Vercel environment")
+        return None
+    
     try:
         if pool is None or pool.is_closed():
             pool = await init_db_pool()
