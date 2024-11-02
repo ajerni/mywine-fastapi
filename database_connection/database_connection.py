@@ -10,9 +10,16 @@ pool: Optional[asyncpg.Pool] = None
 async def init_db_pool():
     global pool
     
-    # If pool already exists and is not closed, return it
-    if pool is not None and not pool.is_closed():
-        return pool
+    # If pool already exists and is active, return it
+    if pool is not None:
+        try:
+            # Test the connection with a simple query
+            async with pool.acquire() as conn:
+                await conn.fetchval('SELECT 1')
+            return pool
+        except Exception:
+            # If the test fails, the pool is not usable
+            pool = None
     
     # Validate environment variables first
     required_env_vars = ['DATABASE', 'DB_USER', 'DB_PASSWORD', 'DB_HOST', 'DB_PORT']
@@ -50,9 +57,13 @@ async def init_db_pool():
         )
 
 async def get_db_connection():
-    return await init_db_pool()
+    global pool
+    if pool is None:
+        pool = await init_db_pool()
+    return pool
 
 async def close_db_pool():
     global pool
-    if pool and not pool.is_closed():
+    if pool is not None:
         await pool.close()
+        pool = None

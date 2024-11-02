@@ -69,7 +69,6 @@ async def test_db_connection():
             return {"status": "failed", "message": "Could not establish database connection"}
             
         async with pool.acquire() as conn:
-            # Test query to list all tables
             tables = await conn.fetch("""
                 SELECT table_name 
                 FROM information_schema.tables 
@@ -132,37 +131,41 @@ async def generate_aisummary(
 
 # DB Stats Query 1
 @app.get('/db-get-wine-notes', tags=["Database Statistics"])
-async def test_db_connection():
+async def get_wine_notes():
+    pool = None
+    conn = None
     try:
         pool = await get_db_connection()
         if not pool:
             return {"status": "failed", "message": "Could not establish database connection"}
             
-        async with pool.acquire() as conn:
-            # Test query to list all tables
-            results = await conn.fetch("""
-                SELECT 
-                    wn.id,
-                    wn.note_text,
-                    wn.wine_id,
-                    wt.name AS wine_name,
-                    wt.user_id,
-                    wu.username,
-                    wu.email
-                FROM 
-                    wine_notes wn
-                JOIN 
-                    wine_table wt ON wn.wine_id = wt.id
-                JOIN 
-                    wine_users wu ON wt.user_id = wu.id;
-            """)
-            
-            return {
-                "status": "success",
-                "message": "Database connection successful",
-                "notes": [dict(row) for row in results]
-            }
+        conn = await pool.acquire()
+        results = await conn.fetch("""
+            SELECT 
+                wn.id,
+                wn.note_text,
+                wn.wine_id,
+                wt.name AS wine_name,
+                wt.user_id,
+                wu.username,
+                wu.email
+            FROM 
+                wine_notes wn
+            JOIN 
+                wine_table wt ON wn.wine_id = wt.id
+            JOIN 
+                wine_users wu ON wt.user_id = wu.id;
+        """)
+        
+        return {
+            "status": "success",
+            "message": "Database connection successful",
+            "notes": [dict(row) for row in results]
+        }
             
     except Exception as e:
         logging.error(f"Database connection test failed: {str(e)}")
         return {"status": "error", "message": str(e)}
+    finally:
+        if conn:
+            await pool.release(conn)

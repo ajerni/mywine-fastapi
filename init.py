@@ -37,22 +37,6 @@ def create_app() -> FastAPI:
     # Mount static files
     app.mount("/static", StaticFiles(directory="static", html=True), name="static")
 
-    @app.on_event("startup")
-    async def startup():
-        try:
-            await init_db_pool()
-            logging.info("Database pool initialized successfully")
-        except Exception as e:
-            logging.error(f"Failed to initialize database pool: {str(e)}")
-
-    @app.on_event("shutdown")
-    async def shutdown():
-        try:
-            await close_db_pool()
-            logging.info("Database pool closed successfully")
-        except Exception as e:
-            logging.error(f"Error closing database pool: {str(e)}")
-
     @app.middleware("http")
     async def db_session_middleware(request, call_next):
         try:
