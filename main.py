@@ -23,6 +23,9 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 
+# Add this after your existing logging configuration
+logging.getLogger("fastapi").setLevel(logging.DEBUG)
+
 app = FastAPI(
     title="FastAPI - mywine.info",
     description="API endpoints for fastapi.mywine.info",
@@ -43,7 +46,7 @@ app.add_middleware(
 )
 
 # Add this after creating the FastAPI app and before the CORS middleware
-app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/static", StaticFiles(directory="static", html=True), name="static")
 
 @app.on_event("startup")
 async def startup():
@@ -226,6 +229,7 @@ async def test_db_connection():
                     wt.name AS wine_name,
                     wt.user_id,
                     wu.username
+                    wu.email
                 FROM 
                     wine_notes wn
                 JOIN 
