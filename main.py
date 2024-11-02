@@ -239,7 +239,7 @@ async def get_empty_notes(token: str = Depends(oauth2_scheme)):
                 
                 return {
                     "status": "success",
-                    "message": "Empty notes fetched successfully",
+                    "message": "Empty note strings fetched successfully",
                     "notes": [dict(row) for row in results]
                 }
             except asyncpg.PostgresError as e:
