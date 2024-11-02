@@ -72,7 +72,7 @@ async def protected_route(token_payload: dict = Depends(verify_token)):
         "user_data": token_payload
     }
 
-@app.get('/db-test-connection', tags=["tests"])
+@app.get('/db-test-connection', tags=["protection test"])
 async def test_db_connection(token: str = Depends(oauth2_scheme)):
     payload = verify_admin_token(token)
     try:
@@ -302,8 +302,8 @@ async def get_wines_per_user(token: str = Depends(oauth2_scheme)):
         logging.error(f"Database query failed: {str(e)}")
         return {"status": "error", "message": "Database connection error"}
 
-# New endpoint for getting admin token
-@app.post("/token")
+# Generate Admin Token
+@app.post("/token", tags=["Admin Authentication"])
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
     admin_username = getenv("ADMIN_USERNAME")
     admin_password = getenv("ADMIN_PASSWORD")
