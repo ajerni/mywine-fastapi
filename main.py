@@ -15,7 +15,12 @@ import logging
 from typing import List, Optional
 import asyncpg
 from os import getenv
-from database_connection import get_db_connection, init_db_pool
+from database_connection import get_db_connection, init_db_pool, close_db_pool
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 
 app = FastAPI(
     title="FastAPI - mywine.info",
@@ -38,12 +43,20 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def startup():
-    await init_db_pool()
+    try:
+        await init_db_pool()
+        logging.info("Database pool initialized successfully")
+    except Exception as e:
+        logging.error(f"Failed to initialize database pool: {str(e)}")
+        raise
 
 @app.on_event("shutdown")
 async def shutdown():
-    if pool:
-        await pool.close()
+    try:
+        await close_db_pool()
+        logging.info("Database pool closed successfully")
+    except Exception as e:
+        logging.error(f"Error closing database pool: {str(e)}")
 
 def read_html_file(file_path: str) -> str:
     return Path(file_path).read_text()
@@ -142,10 +155,15 @@ async def generate_aisummary(
 @app.get('/db-get-wine-notes', 
     response_model=List[WineNotesStats],
     tags=["Database Statistics"])
-# async def get_wine_notes(token_payload: dict = Depends(verify_token)):
 async def get_wine_notes():
     try:
         pool = await get_db_connection()
+        if not pool:
+            raise HTTPException(
+                status_code=500,
+                detail="Database connection pool not available"
+            )
+            
         async with pool.acquire() as conn:
             query = """
             SELECT 
@@ -167,6 +185,9 @@ async def get_wine_notes():
             
             rows = await conn.fetch(query)
             
+            if not rows:
+                return []
+                
             return [
                 WineNotesStats(
                     user_id=row['user_id'],
@@ -176,9 +197,15 @@ async def get_wine_notes():
                 ) for row in rows
             ]
             
-    except Exception as e:
-        logging.error(f"Database query error: {str(e)}")
+    except asyncpg.PostgresError as e:
+        logging.error(f"PostgreSQL error: {str(e)}")
         raise HTTPException(
             status_code=500,
-            detail=f"Database query failed: {str(e)}"
+            detail=f"Database query failed: PostgreSQL error"
+        )
+    except Exception as e:
+        logging.error(f"Unexpected database error: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Database query failed: unexpected error"
         )
