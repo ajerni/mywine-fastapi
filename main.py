@@ -218,7 +218,7 @@ async def test_db_connection():
             
         async with pool.acquire() as conn:
             # Test query to list all tables
-            tables = await conn.fetch("""
+            results = await conn.fetch("""
                 SELECT 
                     wn.id,
                     wn.note_text,
@@ -237,7 +237,7 @@ async def test_db_connection():
             return {
                 "status": "success",
                 "message": "Database connection successful",
-                "tables": [table['table_name'] for table in tables]
+                "notes": [dict(row) for row in results]  # Convert each record to a dictionary
             }
             
     except Exception as e:
