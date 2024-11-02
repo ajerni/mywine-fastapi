@@ -257,37 +257,3 @@ async def get_wine_notes():
         logging.error(f"Unexpected error in get_wine_notes: {str(e)}")
         return []  # Return empty list instead of error
 
-# Modify the middleware to be more specific
-@app.middleware("http")
-async def error_handling_middleware(request, call_next):
-    try:
-        response = await call_next(request)
-        return response
-    except Exception as e:
-        logging.error(f"Request failed: {str(e)}")
-        if request.url.path == "/":
-            content = """
-                <h1>Welcome to mywine.info API</h1>
-                <p>API documentation available at <a href="/docs">/docs</a></p>
-                <p>Status: Active</p>
-                <p><a href="https://www.mywine.info">Back to main site</a></p>
-            """
-            return await get_html_response(content)
-        
-        # For non-root routes, return a JSON error response
-        return JSONResponse(
-            status_code=500,
-            content={
-                "detail": "Internal server error",
-                "path": request.url.path
-            }
-        )
-
-# Add a new route for static files in Vercel environment
-@app.get("/static/{file_path:path}")
-async def serve_static(file_path: str):
-    try:
-        return FileResponse(f"static/{file_path}")
-    except Exception as e:
-        logging.error(f"Error serving static file {file_path}: {str(e)}")
-        raise HTTPException(status_code=404, detail="File not found")
