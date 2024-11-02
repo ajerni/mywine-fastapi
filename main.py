@@ -12,6 +12,10 @@ from pydantic import BaseModel
 from groq_summary.summary import generate_wine_summary
 from fastapi.middleware.cors import CORSMiddleware
 import logging
+from typing import List, Optional
+import asyncpg
+from os import getenv
+from database_connection import get_db_connection, init_db_pool
 
 app = FastAPI(
     title="FastAPI - mywine.info",
@@ -32,6 +36,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.on_event("startup")
+async def startup():
+    await init_db_pool()
+
+@app.on_event("shutdown")
+async def shutdown():
+    if pool:
+        await pool.close()
+
 def read_html_file(file_path: str) -> str:
     return Path(file_path).read_text()
 
@@ -40,6 +53,13 @@ class WineRequest(BaseModel):
     wine_id: str
     wine_name: str
     wine_producer: str
+
+# response model for query 1
+class WineNotesStats(BaseModel):
+    user_id: int
+    username: str
+    wine_entries: int
+    wines_with_notes: int
 
 # ENDPOINTS:
 
@@ -116,4 +136,49 @@ async def generate_aisummary(
         raise HTTPException(
             status_code=500,
             detail=f"An unexpected error occurred: {str(e)}"
+        )
+
+# DB Stats Query 1
+@app.get('/db-get-wine-notes', 
+    response_model=List[WineNotesStats],
+    tags=["Database Statistics"])
+# async def get_wine_notes(token_payload: dict = Depends(verify_token)):
+async def get_wine_notes():
+    try:
+        pool = await get_db_connection()
+        async with pool.acquire() as conn:
+            query = """
+            SELECT 
+                wt.user_id,
+                wu.username,
+                COUNT(*) AS wine_entries,
+                COUNT(wn.id) AS wines_with_notes
+            FROM 
+                wine_table wt
+            JOIN 
+                wine_users wu ON wt.user_id = wu.id
+            LEFT JOIN 
+                wine_notes wn ON wt.id = wn.wine_id
+            GROUP BY 
+                wt.user_id, wu.username
+            ORDER BY 
+                wt.user_id;
+            """
+            
+            rows = await conn.fetch(query)
+            
+            return [
+                WineNotesStats(
+                    user_id=row['user_id'],
+                    username=row['username'],
+                    wine_entries=row['wine_entries'],
+                    wines_with_notes=row['wines_with_notes']
+                ) for row in rows
+            ]
+            
+    except Exception as e:
+        logging.error(f"Database query error: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Database query failed: {str(e)}"
         )

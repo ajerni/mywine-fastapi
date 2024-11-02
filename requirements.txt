@@ -3,3 +3,4 @@ python-jose[cryptography]
 python-dotenv
 pydantic
 groq
+asyncpg
