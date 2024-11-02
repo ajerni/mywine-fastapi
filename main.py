@@ -132,40 +132,35 @@ async def generate_aisummary(
 # DB Stats Query 1
 @app.get('/db-get-wine-notes', tags=["Database Statistics"])
 async def get_wine_notes():
-    pool = None
-    conn = None
     try:
         pool = await get_db_connection()
         if not pool:
             return {"status": "failed", "message": "Could not establish database connection"}
             
-        conn = await pool.acquire()
-        results = await conn.fetch("""
-            SELECT 
-                wn.id,
-                wn.note_text,
-                wn.wine_id,
-                wt.name AS wine_name,
-                wt.user_id,
-                wu.username,
-                wu.email
-            FROM 
-                wine_notes wn
-            JOIN 
-                wine_table wt ON wn.wine_id = wt.id
-            JOIN 
-                wine_users wu ON wt.user_id = wu.id;
-        """)
-        
-        return {
-            "status": "success",
-            "message": "Database connection successful",
-            "notes": [dict(row) for row in results]
-        }
+        async with pool.acquire() as conn:
+            results = await conn.fetch("""
+                SELECT 
+                    wn.id,
+                    wn.note_text,
+                    wn.wine_id,
+                    wt.name AS wine_name,
+                    wt.user_id,
+                    wu.username,
+                    wu.email
+                FROM 
+                    wine_notes wn
+                JOIN 
+                    wine_table wt ON wn.wine_id = wt.id
+                JOIN 
+                    wine_users wu ON wt.user_id = wu.id;
+            """)
+            
+            return {
+                "status": "success",
+                "message": "Database connection successful",
+                "notes": [dict(row) for row in results]
+            }
             
     except Exception as e:
-        logging.error(f"Database connection test failed: {str(e)}")
+        logging.error(f"Database query failed: {str(e)}")
         return {"status": "error", "message": str(e)}
-    finally:
-        if conn:
-            await pool.release(conn)
