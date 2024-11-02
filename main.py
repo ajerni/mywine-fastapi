@@ -158,7 +158,48 @@ async def get_wine_notes():
                 
                 return {
                     "status": "success",
-                    "message": "Database connection successful",
+                    "message": "Wine notes fetched successfully",
+                    "notes": [dict(row) for row in results]
+                }
+            except asyncpg.PostgresError as e:
+                logging.error(f"PostgreSQL query error: {str(e)}")
+                return {"status": "error", "message": "Database query failed"}
+            
+    except Exception as e:
+        logging.error(f"Database query failed: {str(e)}")
+        return {"status": "error", "message": "Database connection error"}
+
+# DB Stats Query 2
+@app.get('/db-get-wines-per-user', tags=["Database Statistics"])
+async def get_wines_per_user():
+    try:
+        pool = await get_db_connection()
+        if not pool:
+            return {"status": "failed", "message": "Could not establish database connection"}
+            
+        async with pool.acquire() as conn:
+            try:
+                results = await conn.fetch("""
+                    SELECT
+                        wt.user_id,
+                        wu.username,
+                        COUNT(*) AS wine_entries,
+                        COUNT(wn.id) AS wines_with_notes
+                    FROM
+                        wine_table wt
+                    JOIN
+                        wine_users wu ON wt.user_id = wu.id
+                    LEFT JOIN
+                        wine_notes wn ON wt.id = wn.wine_id
+                    GROUP BY
+                        GROUPING SETS ((wt.user_id, wu.username), ())
+                    ORDER BY
+                        wt.user_id NULLS LAST;
+                """)
+                
+                return {
+                    "status": "success",
+                    "message": "Wines per user fetched successfully",
                     "notes": [dict(row) for row in results]
                 }
             except asyncpg.PostgresError as e:
