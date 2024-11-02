@@ -3,6 +3,7 @@ from fastapi import HTTPException
 import asyncpg
 import logging
 from typing import Optional
+import asyncio
 
 # Global pool variable
 pool: Optional[asyncpg.Pool] = None
@@ -17,8 +18,13 @@ async def init_db_pool():
             async with pool.acquire() as conn:
                 await conn.fetchval('SELECT 1')
             return pool
-        except Exception:
+        except Exception as e:
+            logging.error(f"Pool test failed: {str(e)}")
             # If the test fails, the pool is not usable
+            try:
+                await pool.close()
+            except Exception:
+                pass
             pool = None
     
     # Validate environment variables first
@@ -40,7 +46,8 @@ async def init_db_pool():
             min_size=1,
             max_size=10,
             command_timeout=60,
-            max_inactive_connection_lifetime=300.0  # 5 minutes
+            max_inactive_connection_lifetime=300.0,  # 5 minutes
+            server_settings={'application_name': 'mywine_fastapi'}
         )
         return pool
     except asyncpg.PostgresError as e:
@@ -58,12 +65,34 @@ async def init_db_pool():
 
 async def get_db_connection():
     global pool
-    if pool is None:
-        pool = await init_db_pool()
-    return pool
+    try:
+        if pool is None:
+            pool = await init_db_pool()
+        # Test the connection
+        async with pool.acquire() as conn:
+            await conn.fetchval('SELECT 1')
+        return pool
+    except Exception as e:
+        logging.error(f"Error getting DB connection: {str(e)}")
+        # Try to recreate the pool
+        try:
+            if pool:
+                await pool.close()
+            pool = None
+            return await init_db_pool()
+        except Exception as e:
+            logging.error(f"Failed to recreate pool: {str(e)}")
+            raise HTTPException(
+                status_code=500,
+                detail="Database connection failed"
+            )
 
 async def close_db_pool():
     global pool
     if pool is not None:
-        await pool.close()
-        pool = None
+        try:
+            await pool.close()
+        except Exception as e:
+            logging.error(f"Error closing pool: {str(e)}")
+        finally:
+            pool = None

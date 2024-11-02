@@ -138,29 +138,33 @@ async def get_wine_notes():
             return {"status": "failed", "message": "Could not establish database connection"}
             
         async with pool.acquire() as conn:
-            results = await conn.fetch("""
-                SELECT 
-                    wn.id,
-                    wn.note_text,
-                    wn.wine_id,
-                    wt.name AS wine_name,
-                    wt.user_id,
-                    wu.username,
-                    wu.email
-                FROM 
-                    wine_notes wn
-                JOIN 
-                    wine_table wt ON wn.wine_id = wt.id
-                JOIN 
-                    wine_users wu ON wt.user_id = wu.id;
-            """)
-            
-            return {
-                "status": "success",
-                "message": "Database connection successful",
-                "notes": [dict(row) for row in results]
-            }
+            try:
+                results = await conn.fetch("""
+                    SELECT 
+                        wn.id,
+                        wn.note_text,
+                        wn.wine_id,
+                        wt.name AS wine_name,
+                        wt.user_id,
+                        wu.username,
+                        wu.email
+                    FROM 
+                        wine_notes wn
+                    JOIN 
+                        wine_table wt ON wn.wine_id = wt.id
+                    JOIN 
+                        wine_users wu ON wt.user_id = wu.id;
+                """)
+                
+                return {
+                    "status": "success",
+                    "message": "Database connection successful",
+                    "notes": [dict(row) for row in results]
+                }
+            except asyncpg.PostgresError as e:
+                logging.error(f"PostgreSQL query error: {str(e)}")
+                return {"status": "error", "message": "Database query failed"}
             
     except Exception as e:
         logging.error(f"Database query failed: {str(e)}")
-        return {"status": "error", "message": str(e)}
+        return {"status": "error", "message": "Database connection error"}
