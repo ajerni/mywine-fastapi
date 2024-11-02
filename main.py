@@ -14,6 +14,7 @@ from init import create_app, get_html_response, read_html_file
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from datetime import timedelta
 from dotenv import load_dotenv
+from jose import jwt, JWTError
 
 # Make sure this is at the top of your file with other imports
 load_dotenv()
@@ -25,6 +26,25 @@ class WineRequest(BaseModel):
     wine_id: str
     wine_name: str
     wine_producer: str
+
+# Add near the top of the file with other imports and initializations
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+# Move verify_admin_token function here, before any endpoints
+async def verify_admin_token(token: str):
+    try:
+        payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[ALGORITHM])
+        if payload.get("role") != "admin":
+            raise HTTPException(
+                status_code=403,
+                detail="Not enough permissions"
+            )
+        return payload
+    except JWTError:
+        raise HTTPException(
+            status_code=401,
+            detail="Could not validate credentials"
+        )
 
 # ENDPOINTS:
 
@@ -301,9 +321,3 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
         expires_delta=timedelta(hours=1)
     )
     return {"access_token": access_token, "token_type": "bearer"}
-
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
-
-async def verify_admin_token(token: str):
-    # Implement your token verification logic here
-    pass
