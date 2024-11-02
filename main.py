@@ -11,7 +11,7 @@ from os import getenv
 from database_connection import get_db_connection
 from lifespan import lifespan
 from init import create_app, get_html_response, read_html_file
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm, HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from datetime import timedelta
 from dotenv import load_dotenv
 from jose import jwt, JWTError
@@ -27,8 +27,8 @@ class WineRequest(BaseModel):
     wine_name: str
     wine_producer: str
 
-# Add near the top of the file with other imports and initializations
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")  # For admin OAuth2
+# Only for admin endpoints
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 # ENDPOINTS:
 
