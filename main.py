@@ -15,6 +15,7 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from datetime import timedelta
 from dotenv import load_dotenv
 from jose import jwt, JWTError
+from fastapi import HTTPBearer
 
 # Make sure this is at the top of your file with other imports
 load_dotenv()
@@ -29,6 +30,7 @@ class WineRequest(BaseModel):
 
 # Add near the top of the file with other imports and initializations
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+security = HTTPBearer()  # For JWT token verification
 
 # Move verify_admin_token function here, before any endpoints
 async def verify_admin_token(token: str):
