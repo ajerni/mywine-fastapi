@@ -183,18 +183,22 @@ async def get_wines_per_user():
                     SELECT
                         wt.user_id,
                         wu.username,
-                        COUNT(*) AS wine_entries,
-                        COUNT(wn.id) AS wines_with_notes
+                        wu.email,
+                    COUNT(*) AS wine_entries,
+                    COUNT(wn.id) AS wines_with_notes,
+                    COUNT(was.id) AS wines_with_aisummaries
                     FROM
                         wine_table wt
                     JOIN
                         wine_users wu ON wt.user_id = wu.id
                     LEFT JOIN
                         wine_notes wn ON wt.id = wn.wine_id
+                    LEFT JOIN
+                        wine_aisummaries was ON wt.id = was.wine_id
                     GROUP BY
-                        GROUPING SETS ((wt.user_id, wu.username), ())
+                        GROUPING SETS ((wt.user_id, wu.username, wu.email), ())
                     ORDER BY
-                        wt.user_id NULLS LAST;
+                    wt.user_id NULLS LAST;
                 """)
                 
                 return {
