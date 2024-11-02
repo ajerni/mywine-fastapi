@@ -1,7 +1,7 @@
 from time import time
 from fastapi import FastAPI, __version__, Depends, HTTPException
 from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
-from helpers import verify_token
+from helpers import verify_token, create_admin_token, verify_admin_token
 from pydantic import BaseModel
 from groq_summary.summary import generate_wine_summary
 import logging
@@ -11,7 +11,7 @@ from os import getenv
 from database_connection import get_db_connection
 from lifespan import lifespan
 from init import create_app, get_html_response, read_html_file
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm, HTTPBearer
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm, HTTPBearer, HTTPAuthorizationCredentials
 from datetime import timedelta
 from dotenv import load_dotenv
 from jose import jwt, JWTError
@@ -28,24 +28,7 @@ class WineRequest(BaseModel):
     wine_producer: str
 
 # Add near the top of the file with other imports and initializations
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
-security = HTTPBearer()  # For JWT token verification
-
-# Move verify_admin_token function here, before any endpoints
-async def verify_admin_token(token: str):
-    try:
-        payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[ALGORITHM])
-        if payload.get("role") != "admin":
-            raise HTTPException(
-                status_code=403,
-                detail="Not enough permissions"
-            )
-        return payload
-    except JWTError:
-        raise HTTPException(
-            status_code=401,
-            detail="Could not validate credentials"
-        )
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")  # For admin OAuth2
 
 # ENDPOINTS:
 
