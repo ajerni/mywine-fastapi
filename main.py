@@ -292,7 +292,7 @@ async def get_wines_per_user(token: str = Depends(oauth2_scheme)):
                 return {
                     "status": "success",
                     "message": "Wines per user fetched successfully",
-                    "notes": [dict(row) for row in results]
+                    "wines_per_user": [dict(row) for row in results]
                 }
             except asyncpg.PostgresError as e:
                 logging.error(f"PostgreSQL query error: {str(e)}")
@@ -330,7 +330,7 @@ async def get_contact_messages(token: str = Depends(oauth2_scheme)):
                 return {
                     "status": "success",
                     "message": "Contact messages fetched successfully",
-                    "notes": [dict(row) for row in results]
+                    "messages": [dict(row) for row in results]
                 }
             except asyncpg.PostgresError as e:
                 logging.error(f"PostgreSQL query error: {str(e)}")
