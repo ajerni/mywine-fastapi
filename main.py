@@ -302,6 +302,44 @@ async def get_wines_per_user(token: str = Depends(oauth2_scheme)):
         logging.error(f"Database query failed: {str(e)}")
         return {"status": "error", "message": "Database connection error"}
 
+# DB Stats Query 4
+@app.get('/db-get-contact-messages', tags=["Database Statistics"])
+async def get_contact_messages(token: str = Depends(oauth2_scheme)):
+    payload = verify_admin_token(token)
+    try:
+        # Add retries for connection
+        max_retries = 3
+        retry_count = 0
+        pool = None
+        
+        while retry_count < max_retries and not pool:
+            pool = await get_db_connection()
+            if not pool:
+                retry_count += 1
+                logging.warning(f"Database connection attempt {retry_count} failed, retrying...")
+                await asyncio.sleep(0.5)  # Add small delay between retries
+        
+        if not pool:
+            logging.error("Failed to establish database connection after retries")
+            return {"status": "failed", "message": "Could not establish database connection"}
+            
+        async with pool.acquire() as conn:
+            try:
+                results = await conn.fetch("SELECT * FROM wine_contact;")
+                
+                return {
+                    "status": "success",
+                    "message": "Contact messages fetched successfully",
+                    "notes": [dict(row) for row in results]
+                }
+            except asyncpg.PostgresError as e:
+                logging.error(f"PostgreSQL query error: {str(e)}")
+                return {"status": "error", "message": "Database query failed"}
+            
+    except Exception as e:
+        logging.error(f"Database query failed: {str(e)}")
+        return {"status": "error", "message": "Database connection error"}
+
 # Generate Admin Token
 @app.post("/token", tags=["Admin Authentication"])
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
