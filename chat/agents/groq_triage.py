@@ -14,6 +14,7 @@ if "GROQ_API_KEY" not in os.environ:
 
 # Initialize Groq client
 groq = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+groq.tool_choice = "auto"  # Set tool_choice separately
 
 async def get_wine_collection_summary(user_id: int) -> str:
     """
@@ -80,12 +81,14 @@ sommelier_agent = Agent(
     Always reference specific wines from the collection when answering questions.
     """
 )
+sommelier_agent.tool_choice = "auto"  # Set tool_choice separately
 
 async def get_agent_response(message: str, user_id: int) -> List[str]:
     """
     Get response from the sommelier agent and return it as a list of chunks.
     """
     client = Microagent(llm_type='groq')
+    client.tool_choice = "auto"  # Set tool_choice separately
     
     # Get the user's wine collection
     wine_collection = await get_wine_collection_summary(user_id)
@@ -104,8 +107,7 @@ async def get_agent_response(message: str, user_id: int) -> List[str]:
         messages=[{"role": "user", "content": context_message}],
         context_variables={},
         stream=True,
-        debug=False,
-       
+        debug=False
     )
     
     chunks = []
