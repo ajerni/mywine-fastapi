@@ -1,20 +1,16 @@
 import asyncio
 from typing import AsyncGenerator
+from .agents.groq_triage import get_agent_response
 
 async def generate_response(message: str) -> AsyncGenerator[str, None]:
     """
-    Generate streaming response chunks.
+    Generate streaming response chunks using the triage agent.
     Each chunk must be a complete piece of text that can be displayed.
     """
-    # Example response generation
-    responses = [
-        "I'm analyzing your wine collection...",
-        "Based on your collection, ",
-        "I notice you have several wines from the Bordeaux region. ",
-        "Would you like specific recommendations for similar wines?"
-    ]
+    # Get response chunks from the agent
+    chunks = await get_agent_response(message)
     
-    for chunk in responses:
+    for chunk in chunks:
         # Add a small delay to simulate processing
         await asyncio.sleep(0.5)
         # Return string directly, no need to encode
