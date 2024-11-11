@@ -367,28 +367,27 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
-    # START of Chat
+# START of Chat
+class ChatRequest(BaseModel):
+    message: str
 
-    class ChatRequest(BaseModel):
-        message: str
-
-    @app.post("/chat", tags=["Chat"])
-    async def chat_endpoint(
-        chat_request: ChatRequest,
-        token_payload: dict = Depends(verify_token)
-    ) -> StreamingResponse:
-        if not chat_request.message.strip():
-            raise HTTPException(
-                status_code=400,
-                detail="Message cannot be empty"
-            )
-        
-        return StreamingResponse(
-            generate_response(chat_request.message),
-            media_type="text/event-stream",
-            headers={
-                "Cache-Control": "no-cache",
-                "Connection": "keep-alive",
-                "Content-Type": "text/event-stream",
-            }
+@app.post("/chat", tags=["Chat"])
+async def chat_endpoint(
+    chat_request: ChatRequest,
+    token_payload: dict = Depends(verify_token)
+) -> StreamingResponse:
+    if not chat_request.message.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="Message cannot be empty"
         )
+    
+    return StreamingResponse(
+        generate_response(chat_request.message),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "Content-Type": "text/event-stream",
+        }
+    )
