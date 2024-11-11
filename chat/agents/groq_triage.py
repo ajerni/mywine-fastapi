@@ -2,6 +2,7 @@ import os
 from dotenv import load_dotenv
 from groq import Groq
 from typing import List
+from .microagent import Microagent, Agent
 
 # Initialization
 
@@ -10,9 +11,6 @@ os.environ['GROQ_API_KEY'] = os.getenv('GROQ_API_KEY')
 groq = Groq(
     api_key=os.environ.get("GROQ_API_KEY"),
 )
-
-from microagent.core import Microagent
-from microagent.types import Agent
 
 # Check if GROQ_API_KEY is set in the environment
 if "GROQ_API_KEY" not in os.environ:
