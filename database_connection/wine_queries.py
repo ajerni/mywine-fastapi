@@ -36,9 +36,10 @@ async def get_user_wine_collection(user_id: int) -> List[Dict[str, Any]]:
         wu.id = $1;
     """
     
-    async with get_db_connection() as conn:
+    pool = await get_db_connection()
+    async with pool.acquire() as conn:
         results = await conn.fetch(query, user_id)
-        return [dict(row) for row in results] 
+        return [dict(row) for row in results]
 
 async def analyze_wine_collection(wines: List[Dict[str, Any]]) -> Dict[str, Any]:
     """

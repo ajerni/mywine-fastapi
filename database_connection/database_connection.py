@@ -4,10 +4,6 @@ import asyncpg
 import logging
 from typing import Optional
 import asyncio
-from dotenv import load_dotenv
-from contextlib import asynccontextmanager
-
-load_dotenv()
 
 # Global pool variable
 pool: Optional[asyncpg.Pool] = None
@@ -67,22 +63,29 @@ async def init_db_pool():
             detail="Database connection failed - unexpected error"
         )
 
-@asynccontextmanager
 async def get_db_connection():
-    """
-    Async context manager for database connections.
-    """
-    conn = await asyncpg.connect(
-        user=getenv('DB_USER'),
-        password=getenv('DB_PASSWORD'),
-        database=getenv('DB_NAME'),
-        host=getenv('DB_HOST'),
-        port=getenv('DB_PORT')
-    )
+    global pool
     try:
-        yield conn
-    finally:
-        await conn.close()
+        if pool is None:
+            pool = await init_db_pool()
+        # Test the connection
+        async with pool.acquire() as conn:
+            await conn.fetchval('SELECT 1')
+        return pool
+    except Exception as e:
+        logging.error(f"Error getting DB connection: {str(e)}")
+        # Try to recreate the pool
+        try:
+            if pool:
+                await pool.close()
+            pool = None
+            return await init_db_pool()
+        except Exception as e:
+            logging.error(f"Failed to recreate pool: {str(e)}")
+            raise HTTPException(
+                status_code=500,
+                detail="Database connection failed"
+            )
 
 async def close_db_pool():
     global pool
