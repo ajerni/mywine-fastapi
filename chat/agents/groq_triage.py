@@ -53,7 +53,6 @@ Individual Wines:
 # Initialize single Sommelier agent
 sommelier_agent = Agent(
     model="llama-3.1-70b-versatile",
-    tool_choice="auto",
     name="Sommelier",
     instructions="""
     You are a knowledgeable wine sommelier. Your responsibilities include:
@@ -85,13 +84,6 @@ sommelier_agent = Agent(
 async def get_agent_response(message: str, user_id: int) -> List[str]:
     """
     Get response from the sommelier agent and return it as a list of chunks.
-    
-    Args:
-        message: The user's input message
-        user_id: The ID of the user whose wine collection to reference
-        
-    Returns:
-        List[str]: Response chunks from the sommelier
     """
     client = Microagent(llm_type='groq')
     
@@ -112,8 +104,7 @@ async def get_agent_response(message: str, user_id: int) -> List[str]:
         messages=[{"role": "user", "content": context_message}],
         context_variables={},
         stream=True,
-        debug=False,
-        tool_choice=None
+        debug=False
     )
     
     chunks = []
