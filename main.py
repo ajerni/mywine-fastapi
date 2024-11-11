@@ -1,5 +1,5 @@
 from time import time
-from fastapi import FastAPI, __version__, Depends, HTTPException
+from fastapi import FastAPI, __version__, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
 from helpers import verify_token, create_admin_token, verify_admin_token
 from pydantic import BaseModel
@@ -375,19 +375,25 @@ class ChatRequest(BaseModel):
 async def chat_endpoint(
     chat_request: ChatRequest,
     token_payload: dict = Depends(verify_token)
-) -> StreamingResponse:
-    if not chat_request.message.strip():
+) -> JSONResponse:
+    try:
+        if not chat_request.message.strip():
+            raise HTTPException(
+                status_code=400,
+                detail="Message cannot be empty"
+            )
+        
+        # Get the complete response instead of streaming in serverless environment
+        response = await generate_response(chat_request.message)
+        
+        return JSONResponse({
+            "message": response,
+            "status": "success"
+        })
+        
+    except Exception as e:
+        logging.error(f"Chat endpoint error: {str(e)}")
         raise HTTPException(
-            status_code=400,
-            detail="Message cannot be empty"
+            status_code=500,
+            detail=f"Failed to generate chat response: {str(e)}"
         )
-    
-    return StreamingResponse(
-        generate_response(chat_request.message),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "Content-Type": "text/event-stream",
-        }
-    )
