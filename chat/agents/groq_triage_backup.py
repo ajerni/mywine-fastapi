@@ -67,8 +67,7 @@ refunds_agent.functions.append(transfer_back_to_triage) # ...
 
 async def get_agent_response(message: str) -> List[str]:
     """
-    Get response from the triage agent and return it as a list of chunks,
-    containing only the final agent responses without intermediate function calls.
+    Get response from the triage agent and return it as a list of chunks.
     """
     client = Microagent(llm_type='groq')
     
@@ -82,30 +81,23 @@ async def get_agent_response(message: str) -> List[str]:
     
     chunks = []
     current_chunk = ""
-    skip_next_content = False
     
     for chunk in response:
-        # Handle tool calls by skipping the next content chunk
-        # which would contain the "Using function..." message
-        if "tool_calls" in chunk and chunk["tool_calls"] is not None:
-            skip_next_content = True
-            continue
-            
         if "content" in chunk and chunk["content"] is not None:
-            if skip_next_content:
-                skip_next_content = False
-                continue
-                
             current_chunk += chunk["content"]
-            
         elif "delim" in chunk and chunk["delim"] == "end" and current_chunk:
-            # Only append non-empty chunks that aren't function call messages
-            if not current_chunk.strip().startswith("Using "):
-                chunks.append(current_chunk.strip())
+            chunks.append(current_chunk)
             current_chunk = ""
+            
+        # Handle tool calls as separate chunks
+        if "tool_calls" in chunk and chunk["tool_calls"] is not None:
+            for tool_call in chunk["tool_calls"]:
+                f = tool_call["function"]
+                name = f["name"]
+                if name:
+                    chunks.append(f"Using {name}...")
     
-    # Handle any remaining content
-    if current_chunk and not current_chunk.strip().startswith("Using "):
-        chunks.append(current_chunk.strip())
+    if current_chunk:
+        chunks.append(current_chunk)
         
-    return [chunk for chunk in chunks if chunk]  # Filter out any empty chunks
+    return chunks
