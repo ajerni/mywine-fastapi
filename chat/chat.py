@@ -1,11 +1,7 @@
-from fastapi import FastAPI, Request, Response
-from fastapi.responses import StreamingResponse
 import asyncio
 from typing import AsyncGenerator
 
-app = FastAPI()
-
-async def generate_response(message: str) -> AsyncGenerator[bytes, None]:
+async def generate_response(message: str) -> AsyncGenerator[str, None]:
     """
     Generate streaming response chunks.
     Each chunk must be a complete piece of text that can be displayed.
@@ -21,6 +17,6 @@ async def generate_response(message: str) -> AsyncGenerator[bytes, None]:
     for chunk in responses:
         # Add a small delay to simulate processing
         await asyncio.sleep(0.5)
-        # Encode the chunk as bytes
-        yield chunk.encode('utf-8')
+        # Return string directly, no need to encode
+        yield chunk
 

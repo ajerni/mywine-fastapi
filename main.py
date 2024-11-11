@@ -383,7 +383,7 @@ async def chat_endpoint(
                 detail="Message cannot be empty"
             )
         
-        # Consume the async generator to get the complete response
+        # Consume the async generator
         response_parts = []
         async for part in generate_response(chat_request.message):
             response_parts.append(part)
