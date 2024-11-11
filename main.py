@@ -370,6 +370,7 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
 # START of Chat
 class ChatRequest(BaseModel):
     message: str
+    user_id: int
 
 @app.post("/chat", tags=["Chat"])
 async def chat_endpoint(
@@ -383,9 +384,9 @@ async def chat_endpoint(
                 detail="Message cannot be empty"
             )
         
-        # Consume the async generator
+        # Pass both message and user_id to generate_response
         response_parts = []
-        async for part in generate_response(chat_request.message):
+        async for part in generate_response(chat_request.message, chat_request.user_id):
             response_parts.append(part)
         
         complete_response = "".join(response_parts)
