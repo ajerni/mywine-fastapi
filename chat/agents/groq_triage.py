@@ -52,7 +52,6 @@ Individual Wines:
 
 # Initialize single Sommelier agent
 sommelier_agent = Agent(
-    # model="llama-3.1-8b-instant",
     model="llama-3.1-70b-versatile",
     tool_choice="auto",
     name="Sommelier",
@@ -113,7 +112,8 @@ async def get_agent_response(message: str, user_id: int) -> List[str]:
         messages=[{"role": "user", "content": context_message}],
         context_variables={},
         stream=True,
-        debug=False
+        debug=False,
+        tool_choice=None
     )
     
     chunks = []
