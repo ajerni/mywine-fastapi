@@ -7,3 +7,5 @@ asyncpg
 python-multipart
 aiofiles
 uvicorn
+openai
+anthropic
