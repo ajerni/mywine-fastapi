@@ -1,7 +1,6 @@
 from typing import List, Dict, Any
 from .database_connection import get_db_connection
 from collections import Counter
-from decimal import Decimal
 
 async def get_user_wine_collection(user_id: int) -> List[Dict[str, Any]]:
     """
@@ -23,7 +22,7 @@ async def get_user_wine_collection(user_id: int) -> List[Dict[str, Any]]:
         wt.country,
         wt.region,
         wt.year,
-        COALESCE(wt.price, 0) as price,
+        wt.price,
         wt.quantity,
         wt.bottle_size,
         wn.note_text
@@ -37,7 +36,8 @@ async def get_user_wine_collection(user_id: int) -> List[Dict[str, Any]]:
         wu.id = $1;
     """
     
-    async with get_db_connection() as conn:
+    pool = await get_db_connection()
+    async with pool.acquire() as conn:
         results = await conn.fetch(query, user_id)
         return [dict(row) for row in results]
 
@@ -61,15 +61,12 @@ async def analyze_wine_collection(wines: List[Dict[str, Any]]) -> Dict[str, Any]
         "countries": Counter(),
         "regions": Counter(),
         "grapes": Counter(),
-        "most_expensive": {"wine": None, "price": Decimal('0')},
+        "most_expensive": {"wine": None, "price": 0},
         "years": Counter(),
         "producers": Counter(),
     }
     
     for wine in wines:
-        # Ensure price is a Decimal or 0
-        wine_price = Decimal(str(wine["price"])) if wine["price"] is not None else Decimal('0')
-        
         # Count by country
         stats["countries"][wine["country"]] += wine["quantity"]
         
@@ -77,25 +74,22 @@ async def analyze_wine_collection(wines: List[Dict[str, Any]]) -> Dict[str, Any]
         stats["regions"][wine["region"]] += wine["quantity"]
         
         # Count by grape varieties (splitting if multiple grapes)
-        if wine["grapes"]:
-            for grape in wine["grapes"].split(','):
-                stats["grapes"][grape.strip()] += wine["quantity"]
+        for grape in wine["grapes"].split(','):
+            stats["grapes"][grape.strip()] += wine["quantity"]
             
-        # Track most expensive wine (safely compare prices)
-        if wine_price > stats["most_expensive"]["price"]:
+        # Track most expensive wine
+        if wine["price"] > stats["most_expensive"]["price"]:
             stats["most_expensive"] = {
                 "wine": wine["wine_name"],
-                "price": wine_price,
+                "price": wine["price"],
                 "producer": wine["producer"],
                 "year": wine["year"]
             }
             
-        # Count by year (ensure year is not None)
-        if wine["year"]:
-            stats["years"][wine["year"]] += wine["quantity"]
+        # Count by year
+        stats["years"][wine["year"]] += wine["quantity"]
         
         # Count by producer
-        if wine["producer"]:
-            stats["producers"][wine["producer"]] += wine["quantity"]
+        stats["producers"][wine["producer"]] += wine["quantity"]
     
     return stats

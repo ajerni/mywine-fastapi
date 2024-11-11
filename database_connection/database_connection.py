@@ -4,14 +4,28 @@ import asyncpg
 import logging
 from typing import Optional
 import asyncio
-from contextlib import asynccontextmanager
 
 # Global pool variable
 pool: Optional[asyncpg.Pool] = None
-pool_lock = asyncio.Lock()  # Add lock for thread safety
 
 async def init_db_pool():
     global pool
+    
+    # If pool already exists and is active, return it
+    if pool is not None:
+        try:
+            # Test the connection with a simple query
+            async with pool.acquire() as conn:
+                await conn.fetchval('SELECT 1')
+            return pool
+        except Exception as e:
+            logging.error(f"Pool test failed: {str(e)}")
+            # If the test fails, the pool is not usable
+            try:
+                await pool.close()
+            except Exception:
+                pass
+            pool = None
     
     # Validate environment variables first
     required_env_vars = ['DATABASE', 'DB_USER', 'DB_PASSWORD', 'DB_HOST', 'DB_PORT']
@@ -23,49 +37,51 @@ async def init_db_pool():
         raise RuntimeError(error_msg)
 
     try:
-        new_pool = await asyncpg.create_pool(
+        pool = await asyncpg.create_pool(
             database=getenv('DATABASE'),
             user=getenv('DB_USER'),
             password=getenv('DB_PASSWORD'),
             host=getenv('DB_HOST'),
             port=getenv('DB_PORT'),
-            min_size=2,  # Increased min size
-            max_size=20,  # Increased max size
+            min_size=1,
+            max_size=10,
             command_timeout=60,
-            max_inactive_connection_lifetime=300.0,
+            max_inactive_connection_lifetime=300.0,  # 5 minutes
             server_settings={'application_name': 'mywine_fastapi'}
         )
-        return new_pool
+        return pool
+    except asyncpg.PostgresError as e:
+        logging.error(f"PostgreSQL error: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail="Database connection failed - PostgreSQL error"
+        )
     except Exception as e:
-        logging.error(f"Pool creation error: {str(e)}")
-        raise
+        logging.error(f"Unexpected database connection error: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail="Database connection failed - unexpected error"
+        )
 
-@asynccontextmanager
 async def get_db_connection():
     global pool
-    async with pool_lock:  # Use lock to prevent concurrent pool creation/recreation
+    try:
+        if pool is None:
+            pool = await init_db_pool()
+        # Test the connection
+        async with pool.acquire() as conn:
+            await conn.fetchval('SELECT 1')
+        return pool
+    except Exception as e:
+        logging.error(f"Error getting DB connection: {str(e)}")
+        # Try to recreate the pool
         try:
-            if pool is None:
-                pool = await init_db_pool()
-            
-            # Get connection from pool
-            async with pool.acquire() as connection:
-                try:
-                    # Test connection
-                    await connection.fetchval('SELECT 1')
-                    yield connection
-                except Exception as e:
-                    logging.error(f"Connection test failed: {str(e)}")
-                    # If connection test fails, recreate pool
-                    if pool:
-                        await pool.close()
-                    pool = await init_db_pool()
-                    # Try one more time with new pool
-                    async with pool.acquire() as new_connection:
-                        yield new_connection
-                        
+            if pool:
+                await pool.close()
+            pool = None
+            return await init_db_pool()
         except Exception as e:
-            logging.error(f"Database connection error: {str(e)}")
+            logging.error(f"Failed to recreate pool: {str(e)}")
             raise HTTPException(
                 status_code=500,
                 detail="Database connection failed"
