@@ -54,7 +54,6 @@ Individual Wines:
 sommelier_agent = Agent(
     model="llama-3.1-70b-versatile",
     name="Sommelier",
-    tool_choice="auto",
     instructions="""
     You are a knowledgeable wine sommelier. Your responsibilities include:
     - Answering questions about wines in the user's collection
@@ -106,7 +105,7 @@ async def get_agent_response(message: str, user_id: int) -> List[str]:
         context_variables={},
         stream=True,
         debug=False,
-        tool_choice="auto"
+       
     )
     
     chunks = []
