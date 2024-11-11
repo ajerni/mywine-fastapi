@@ -383,11 +383,15 @@ async def chat_endpoint(
                 detail="Message cannot be empty"
             )
         
-        # Get the complete response instead of streaming in serverless environment
-        response = await generate_response(chat_request.message)
+        # Consume the async generator to get the complete response
+        response_parts = []
+        async for part in generate_response(chat_request.message):
+            response_parts.append(part)
+        
+        complete_response = "".join(response_parts)
         
         return JSONResponse({
-            "message": response,
+            "message": complete_response,
             "status": "success"
         })
         
