@@ -1,4 +1,4 @@
-from typing import Dict, Any, List, Generator, Optional
+from typing import Dict, Any, List, Generator, Optional, Union
 from .types import Agent, Response, Result
 from .util import debug_print, function_to_json, merge_chunk
 import json
@@ -19,7 +19,20 @@ class Microagent:
         context_variables: Dict[str, Any] = None,
         stream: bool = False,
         debug: bool = False,
-    ) -> Generator[Dict[str, Any], None, None] if stream else Response:
+    ) -> Union[Generator[Dict[str, Any], None, None], Response]:
+        """
+        Run the agent with the given messages and context.
+        
+        Args:
+            agent: The agent to run
+            messages: List of message dictionaries
+            context_variables: Optional context variables
+            stream: Whether to stream the response
+            debug: Whether to print debug information
+            
+        Returns:
+            Either a generator of response chunks (if stream=True) or a complete Response object
+        """
         context_variables = context_variables or {}
         
         # Convert functions to the format expected by the LLM
