@@ -367,7 +367,7 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
-# START of Chat
+# START of Chat (Main AI Sommelier)
 class ChatRequest(BaseModel):
     message: str
     user_id: int
@@ -402,3 +402,55 @@ async def chat_endpoint(
             status_code=500,
             detail=f"Failed to generate chat response: {str(e)}"
         )
+
+# setting Pro user accounts true or false
+
+class ProAccountUpdate(BaseModel):
+    user_id: int
+    has_proaccount: bool
+
+@app.put('/update-pro-status', tags=["User Management"])
+async def update_pro_status(
+    update_data: ProAccountUpdate,
+    token: str = Depends(oauth2_scheme)
+) -> JSONResponse:
+    # Verify admin token
+    payload = verify_admin_token(token)
+    
+    try:
+        pool = await get_db_connection()
+        if not pool:
+            raise HTTPException(
+                status_code=503,
+                detail="Could not establish database connection"
+            )
+            
+        async with pool.acquire() as conn:
+            result = await conn.execute("""
+                UPDATE wine_users
+                SET has_proaccount = $1
+                WHERE id = $2
+            """, update_data.has_proaccount, update_data.user_id)
+            
+            if result == "UPDATE 0":
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"User with ID {update_data.user_id} not found"
+                )
+            
+            return JSONResponse({
+                "status": "success",
+                "message": f"Pro account status updated for user {update_data.user_id}",
+                "updated_status": update_data.has_proaccount
+            })
+            
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logging.error(f"Failed to update pro account status: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to update pro account status"
+        )
+
+    
