@@ -33,6 +33,9 @@ Average bottle value: ${stats['average_bottle_value']:,.2f}
 Most expensive wine: {stats['most_expensive']['wine']} ({stats['most_expensive']['year']}) 
 by {stats['most_expensive']['producer']} - ${stats['most_expensive']['price']:,.2f}
 
+Value by grape variety:
+{chr(10).join(f'- {grape}: ${value:,.2f}' for grape, value in stats['value_by_grape'].items())}
+
 Value by country:
 {chr(10).join(f'- {country}: ${value:,.2f}' for country, value in stats['value_by_country'].items())}
 
