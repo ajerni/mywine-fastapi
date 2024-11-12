@@ -72,7 +72,7 @@ async def get_agent_response(message: str, user_id: int) -> List[str]:
     If asked about wines not in the collection, provide general expert advice.
     
     Always reference specific wines from the collection when answering questions.
-    Be concise but informative in your responses."""
+    Be concise but informative in your responses. Do not ask questions."""
     
     # Create the complete context
     user_prompt = f"""Here is the user's current wine collection:
@@ -89,8 +89,8 @@ User question: {message}"""
         ],
         #model="llama-3.1-70b-versatile",
         model="llama-3.1-8b-instant",
-        temperature=0.7,
-        max_tokens=1000,
+        temperature=0.5, # 0.7
+        max_tokens=700, # 1000
         top_p=1,
         stream=True
     )
