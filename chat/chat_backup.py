@@ -1,21 +1,23 @@
 import asyncio
 from typing import AsyncGenerator
+from .agents.groq_triage import get_agent_response
 
-async def generate_response(message: str) -> AsyncGenerator[str, None]:
+async def generate_response(message: str, user_id: int) -> AsyncGenerator[str, None]:
     """
-    Generate streaming response chunks.
-    Each chunk must be a complete piece of text that can be displayed.
-    """
-    # Example response generation
-    responses = [
-        "I'm analyzing your wine collection...",
-        "Based on your collection, ",
-        "I notice you have several wines from the Bordeaux region. ",
-        "Would you like specific recommendations for similar wines?"
-    ]
+    Generate streaming response chunks using the sommelier agent.
     
-    for chunk in responses:
+    Args:
+        message: The user's input message
+        user_id: The ID of the user whose wine collection to reference
+        
+    Yields:
+        str: Response chunks from the sommelier
+    """
+    # Get response chunks from the agent with the specific user_id
+    chunks = await get_agent_response(message, user_id)
+    
+    for chunk in chunks:
         # Add a small delay to simulate processing
         await asyncio.sleep(0.5)
-        # Return string directly, no need to encode
         yield chunk
+

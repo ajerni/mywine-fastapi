@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 from groq import Groq
 from typing import List, Dict, Any
 from database_connection.wine_queries import get_user_wine_collection, analyze_wine_collection
+from decimal import Decimal
 
 # Load environment variables
 load_dotenv()
@@ -26,21 +27,28 @@ async def get_wine_collection_summary(user_id: int) -> str:
     summary = f"""Wine Collection Summary:
 Total bottles: {stats['total_bottles']}
 Unique wines: {stats['total_unique_wines']}
+Total collection value: ${stats['total_value']:,.2f}
+Average bottle value: ${stats['average_bottle_value']:,.2f}
 
 Most expensive wine: {stats['most_expensive']['wine']} ({stats['most_expensive']['year']}) 
-by {stats['most_expensive']['producer']} - ${stats['most_expensive']['price']}
+by {stats['most_expensive']['producer']} - ${stats['most_expensive']['price']:,.2f}
 
-Wines by country:
+Value by country:
+{chr(10).join(f'- {country}: ${value:,.2f}' for country, value in stats['value_by_country'].items())}
+
+Bottles by country:
 {chr(10).join(f'- {country}: {count} bottles' for country, count in stats['countries'].most_common())}
 
 Individual Wines:
 """
     
     for wine in wines:
+        wine_value = Decimal(str(wine['price'])) * Decimal(str(wine['quantity']))
         summary += f"- {wine['wine_name']} ({wine['year']}) by {wine['producer']}\n"
         summary += f"  Region: {wine['country']}, {wine['region']}\n"
         summary += f"  Grapes: {wine['grapes']}\n"
         summary += f"  Quantity: {wine['quantity']} x {wine['bottle_size']}\n"
+        summary += f"  Value: ${wine_value:,.2f} (${wine['price']:,.2f} per bottle)\n"
         if wine['note_text']:
             summary += f"  Notes: {wine['note_text']}\n"
         summary += "\n"

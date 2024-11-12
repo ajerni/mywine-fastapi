@@ -44,13 +44,13 @@ async def get_user_wine_collection(user_id: int) -> List[Dict[str, Any]]:
 
 async def analyze_wine_collection(wines: List[Dict[str, Any]]) -> Dict[str, Any]:
     """
-    Analyze the wine collection to provide useful statistics including value calculations.
+    Analyze the wine collection to provide useful statistics.
     
     Args:
         wines: List of wine dictionaries from the database
         
     Returns:
-        Dict containing various wine collection statistics including value metrics
+        Dict containing various wine collection statistics
     """
     if not wines:
         return {"error": "No wines found in collection"}
@@ -65,46 +65,24 @@ async def analyze_wine_collection(wines: List[Dict[str, Any]]) -> Dict[str, Any]
         "most_expensive": {"wine": None, "price": Decimal('0')},
         "years": Counter(),
         "producers": Counter(),
-        "total_value": Decimal('0'),
-        "value_by_country": {},
-        "value_by_region": {},
-        "value_by_producer": {},
-        "average_bottle_value": Decimal('0')
     }
     
     for wine in wines:
         # Ensure price is a Decimal or 0
         wine_price = Decimal(str(wine["price"])) if wine["price"] is not None else Decimal('0')
-        wine_quantity = Decimal(str(wine["quantity"]))
-        wine_value = wine_price * wine_quantity
         
-        # Add to total value
-        stats["total_value"] += wine_value
-        
-        # Existing counters
+        # Count by country
         stats["countries"][wine["country"]] += wine["quantity"]
+        
+        # Count by region
         stats["regions"][wine["region"]] += wine["quantity"]
         
-        # Value by country
-        stats["value_by_country"][wine["country"]] = (
-            stats["value_by_country"].get(wine["country"], Decimal('0')) + wine_value
-        )
-        
-        # Value by region
-        stats["value_by_region"][wine["region"]] = (
-            stats["value_by_region"].get(wine["region"], Decimal('0')) + wine_value
-        )
-        
-        # Value by producer
-        stats["value_by_producer"][wine["producer"]] = (
-            stats["value_by_producer"].get(wine["producer"], Decimal('0')) + wine_value
-        )
-        
-        # Rest of the existing code remains the same...
+        # Count by grape varieties (splitting if multiple grapes)
         if wine["grapes"]:
             for grape in wine["grapes"].split(','):
                 stats["grapes"][grape.strip()] += wine["quantity"]
             
+        # Track most expensive wine (safely compare prices)
         if wine_price > stats["most_expensive"]["price"]:
             stats["most_expensive"] = {
                 "wine": wine["wine_name"],
@@ -113,31 +91,12 @@ async def analyze_wine_collection(wines: List[Dict[str, Any]]) -> Dict[str, Any]
                 "year": wine["year"]
             }
             
+        # Count by year (ensure year is not None)
         if wine["year"]:
             stats["years"][wine["year"]] += wine["quantity"]
         
+        # Count by producer
         if wine["producer"]:
             stats["producers"][wine["producer"]] += wine["quantity"]
-    
-    # Calculate average bottle value
-    if stats["total_bottles"] > 0:
-        stats["average_bottle_value"] = stats["total_value"] / Decimal(str(stats["total_bottles"]))
-    
-    # Sort value dictionaries by value (descending)
-    stats["value_by_country"] = dict(sorted(
-        stats["value_by_country"].items(), 
-        key=lambda x: x[1], 
-        reverse=True
-    ))
-    stats["value_by_region"] = dict(sorted(
-        stats["value_by_region"].items(), 
-        key=lambda x: x[1], 
-        reverse=True
-    ))
-    stats["value_by_producer"] = dict(sorted(
-        stats["value_by_producer"].items(), 
-        key=lambda x: x[1], 
-        reverse=True
-    ))
     
     return stats
