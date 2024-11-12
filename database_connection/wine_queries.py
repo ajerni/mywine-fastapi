@@ -69,6 +69,7 @@ async def analyze_wine_collection(wines: List[Dict[str, Any]]) -> Dict[str, Any]
         "value_by_country": {},
         "value_by_region": {},
         "value_by_producer": {},
+        "value_by_grape": {},
         "average_bottle_value": Decimal('0')
     }
     
@@ -100,11 +101,15 @@ async def analyze_wine_collection(wines: List[Dict[str, Any]]) -> Dict[str, Any]
             stats["value_by_producer"].get(wine["producer"], Decimal('0')) + wine_value
         )
         
-        # Rest of the existing code remains the same...
+        # Add value calculation for grapes
         if wine["grapes"]:
             for grape in wine["grapes"].split(','):
-                stats["grapes"][grape.strip()] += wine["quantity"]
-            
+                grape = grape.strip()
+                stats["grapes"][grape] += wine["quantity"]
+                stats["value_by_grape"][grape] = (
+                    stats["value_by_grape"].get(grape, Decimal('0')) + wine_value
+                )
+        
         if wine_price > stats["most_expensive"]["price"]:
             stats["most_expensive"] = {
                 "wine": wine["wine_name"],
@@ -136,6 +141,11 @@ async def analyze_wine_collection(wines: List[Dict[str, Any]]) -> Dict[str, Any]
     ))
     stats["value_by_producer"] = dict(sorted(
         stats["value_by_producer"].items(), 
+        key=lambda x: x[1], 
+        reverse=True
+    ))
+    stats["value_by_grape"] = dict(sorted(
+        stats["value_by_grape"].items(), 
         key=lambda x: x[1], 
         reverse=True
     ))
