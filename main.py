@@ -453,4 +453,51 @@ async def update_pro_status(
             detail="Failed to update pro account status"
         )
 
+# getting user list
+
+@app.get('/user-list', tags=["User Management"])
+async def get_user_list(token: str = Depends(oauth2_scheme)) -> JSONResponse:
+    payload = verify_admin_token(token)
+    try:
+        pool = await get_db_connection()
+        if not pool:
+            raise HTTPException(
+                status_code=503,
+                detail="Could not establish database connection"
+            )
+            
+        async with pool.acquire() as conn:
+            results = await conn.fetch("""
+                SELECT 
+                    wu.id,
+                    wu.username,
+                    wu.email,
+                    COUNT(wt.id) AS wine_count,
+                    COUNT(DISTINCT wn.wine_id) AS wines_with_notes,
+                    COUNT(DISTINCT was.wine_id) AS wines_with_ai_summary
+                FROM 
+                    wine_users wu
+                LEFT JOIN 
+                    wine_table wt ON wu.id = wt.user_id
+                LEFT JOIN 
+                    wine_notes wn ON wt.id = wn.wine_id
+                LEFT JOIN 
+                    wine_aisummaries was ON wt.id = was.wine_id
+                GROUP BY 
+                    wu.id, wu.username, wu.email;
+            """)
+            
+            return JSONResponse({
+                "status": "success",
+                "message": "User list fetched successfully",
+                "users": [dict(row) for row in results]
+            })
+            
+    except Exception as e:
+        logging.error(f"Failed to fetch user list: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to fetch user list"
+        )
+
     
