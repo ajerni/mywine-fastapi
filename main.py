@@ -509,3 +509,23 @@ async def execute_sql_endpoint(
     token_payload: dict = Depends(verify_token)
 ) -> JSONResponse:
     return await execute_sql(sql_query)
+
+@app.get("/verify-jwt-secret")
+async def verify_jwt_secret():
+    secret = os.getenv("JWT_SECRET")
+    if not secret:
+        raise HTTPException(status_code=500, detail="JWT_SECRET not set")
+    
+    # Create same hash as Next.js side
+    secret_hash = hashlib.sha256(secret.encode()).hexdigest()
+    
+    return {
+        "secretHash": secret_hash,
+        "formatDetails": {
+            "length": len(secret),
+            "containsSpaces": any(c.isspace() for c in secret),
+            "startsWithSpaces": secret[0].isspace() if secret else False,
+            "endsWithSpaces": secret[-1].isspace() if secret else False,
+            "encoding": secret.encode().hex()[:20] + "..."
+        }
+    }
