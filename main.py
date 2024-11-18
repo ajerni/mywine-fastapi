@@ -17,6 +17,7 @@ from datetime import timedelta
 from dotenv import load_dotenv
 from jose import jwt, JWTError
 import asyncio
+from sql_execute.execute import execute_sql
 
 # Make sure this is at the top of your file with other imports
 load_dotenv()
@@ -501,3 +502,10 @@ async def get_user_list(token: str = Depends(oauth2_scheme)) -> JSONResponse:
         )
 
     
+# SQL Execution
+@app.post('/execute-sql', tags=["SQL Execution"])
+async def execute_sql_endpoint(
+    sql_query: str, 
+    token_payload: dict = Depends(verify_token)
+) -> JSONResponse:
+    return await execute_sql(sql_query)
