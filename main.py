@@ -17,7 +17,7 @@ from datetime import timedelta
 from dotenv import load_dotenv
 from jose import jwt, JWTError
 import asyncio
-from sql_execute.execute import execute_sql
+from sql-execute.execute import execute_sql
 
 # Make sure this is at the top of your file with other imports
 load_dotenv()
