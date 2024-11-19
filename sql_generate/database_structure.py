@@ -16,7 +16,13 @@ SCHEMA = {
             "user_id": "INTEGER REFERENCES wine_users(id)",
             "name": "VARCHAR(255) NOT NULL",
             "producer": "VARCHAR(255)",
-            "vintage": "INTEGER",
+            "grapes": "VARCHAR(255)",
+            "country": "VARCHAR(100)",
+            "region": "VARCHAR(100)",
+            "year": "INTEGER",
+            "quantity": "INTEGER",
+            "bottle_size": "numeric(5,3)",
+            "price": "numeric(10,2)",
             "created_at": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
         },
         "description": "Stores wine entries created by users"
@@ -34,7 +40,7 @@ SCHEMA = {
         "columns": {
             "id": "SERIAL PRIMARY KEY",
             "wine_id": "INTEGER REFERENCES wine_table(id)",
-            "summary_text": "TEXT",
+            "summary": "TEXT",
             "created_at": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
         },
         "description": "Stores AI-generated summaries for wines"
@@ -42,8 +48,11 @@ SCHEMA = {
     "wine_contact": {
         "columns": {
             "id": "SERIAL PRIMARY KEY",
-            "name": "VARCHAR(255)",
-            "email": "VARCHAR(255)",
+            "user_id": "INTEGER REFERENCES wine_users(id)",
+            "first_name": "TEXT",
+            "last_name": "TEXT",
+            "email": "TEXT",
+            "subject": "TEXT",
             "message": "TEXT",
             "created_at": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
         },
