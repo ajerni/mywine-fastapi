@@ -8,3 +8,8 @@ const response = await fetch('https://fastapi.mywine.info/protected-endpoint', {
 Routes are secured by JWT token:
 
 Adding "token_payload: dict = Depends(verify_token)" to the function argument will automatically verify the token and add the user data to the function argument.
+
+
+***
+
+adding "token: str = Depends(oauth2_scheme)" to the functions signature will protect the endpoint with usernaame and password.

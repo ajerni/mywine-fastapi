@@ -18,6 +18,7 @@ from dotenv import load_dotenv
 from jose import jwt, JWTError
 import asyncio
 from sql_execute.execute import execute_sql
+from sql_generate.generate import generate_sql
 
 
 # Make sure this is at the top of your file with other imports
@@ -509,7 +510,19 @@ async def execute_sql_endpoint(
     sql_query: str, 
     token_payload: dict = Depends(verify_token)
 ) -> JSONResponse:
-    return await execute_sql(sql_query)
+    try:
+        if not sql_query.strip():
+            raise HTTPException(
+                status_code=400,
+                detail="SQL query cannot be empty"
+            )
+        return await execute_sql(sql_query)
+    except Exception as e:
+        logging.error(f"SQL execution error: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to execute SQL query: {str(e)}"
+        )
 
 # SQL Generation
 @app.post('/generate-sql', tags=["SQL Statements"])
@@ -517,4 +530,16 @@ async def generate_sql_endpoint(
     question: str,
     token_payload: dict = Depends(verify_token)
 ) -> JSONResponse:
-    return await generate_sql(question)
+    try:
+        if not question.strip():
+            raise HTTPException(
+                status_code=400,
+                detail="Question cannot be empty"
+            )
+        return await generate_sql(question)
+    except Exception as e:
+        logging.error(f"SQL generation error: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate SQL: {str(e)}"
+        )
