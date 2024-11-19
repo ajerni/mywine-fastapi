@@ -1,9 +1,8 @@
 import os
-from typing import Optional
-from groq import AsyncGroq
-from fastapi import HTTPException
+from typing import Dict, Any
 import logging
-from .database_structure import export_schema
+from .database_structure import SCHEMA, RELATIONSHIPS
+from groq_summary.summary import get_groq_client
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -17,67 +16,97 @@ if not GROQ_API_KEY:
 
 # Initialize Groq client
 try:
-    client = AsyncGroq(api_key=GROQ_API_KEY)
+    client = get_groq_client()
 except Exception as e:
     logger.error(f"Failed to initialize Groq client: {str(e)}")
     raise RuntimeError(f"Failed to initialize Groq client: {str(e)}")
 
-async def generate_sql(question: str) -> str:
+async def generate_sql(question: str) -> Dict[str, Any]:
+    """
+    Generate SQL query based on natural language question using Groq.
+    
+    Args:
+        question: Natural language question about the wine database
+        
+    Returns:
+        Dictionary containing generated SQL and explanation
+    """
     try:
-        logger.info(f"Starting SQL generation for question: {question}")
+        # Create context about database structure
+        db_context = "Database Schema:\n"
+        for table, info in SCHEMA.items():
+            db_context += f"\n{table} ({info['description']}):\n"
+            for column, type_info in info['columns'].items():
+                db_context += f"- {column}: {type_info}\n"
         
-        system_prompt = f"""
-        You are a SQL expert (PostgreSQL). Generate SQL statements to get data from the database.
-        Here is the complete database structure:
+        # Add relationships
+        db_context += "\nRelationships:\n"
+        for rel in RELATIONSHIPS:
+            db_context += f"- {rel['from']} to {rel['to']}: {rel['type']} via {rel['via']}\n"
 
-        {export_schema}
+        # Construct prompt
+        prompt = f"""Given this database schema:
 
-        Important instructions:
-        1. Return ONLY the SQL statement, nothing else
-        2. Use proper table joins where needed
-        3. Follow PostgreSQL syntax
-        4. Ensure the statement is complete and executable
-        5. Include appropriate WHERE clauses for filtering
-        """
-        
-        user_prompt = f"Generate a SQL statement to: {question}"
-        
-        logger.info("Sending request to Groq API")
-        response = await client.chat.completions.create(
+{db_context}
+
+Generate a PostgreSQL query to answer this question: {question}
+
+Provide:
+1. The SQL query
+2. A brief explanation of how the query works
+
+Format the response as JSON with 'query' and 'explanation' fields."""
+
+        # Get completion from Groq
+        chat_completion = await client.chat.completions.create(
             messages=[
                 {
                     "role": "system",
-                    "content": system_prompt
+                    "content": "You are a SQL expert who generates precise PostgreSQL queries."
                 },
                 {
                     "role": "user",
-                    "content": user_prompt,
+                    "content": prompt
                 }
             ],
-            model="llama-3.1-8b-instant",
-            max_tokens=500,
-            temperature=0.1
+            model="mixtral-8x7b-32768",
+            temperature=0.1,
+            max_tokens=1000
         )
-        
-        if not response or not hasattr(response, 'choices') or not response.choices:
-            logger.error("No response received from Groq API")
-            raise HTTPException(
-                status_code=500,
-                detail="No response received from AI service"
-            )
 
-        # Extract the SQL statement from the response
-        sql_statement = response.choices[0].message.content.strip()
+        # Extract response
+        response = chat_completion.choices[0].message.content
         
-        # Remove any markdown formatting if present
-        sql_statement = sql_statement.replace('```sql', '').replace('```', '').strip()
-        
-        logger.info(f"Successfully generated SQL statement")
-        return sql_statement
+        # Parse response to get query and explanation
+        # Note: In practice, you'd want more robust parsing here
+        import json
+        try:
+            result = json.loads(response)
+            return {
+                "status": "success",
+                "sql": result.get("query", ""),
+                "explanation": result.get("explanation", ""),
+                "raw_response": response
+            }
+        except json.JSONDecodeError:
+            # Fallback parsing if JSON parsing fails
+            parts = response.split("2.")
+            if len(parts) >= 2:
+                sql = parts[0].replace("1.", "").strip()
+                explanation = parts[1].strip()
+                return {
+                    "status": "success",
+                    "sql": sql,
+                    "explanation": explanation,
+                    "raw_response": response
+                }
+            else:
+                raise ValueError("Could not parse response format")
 
     except Exception as e:
-        logger.error(f"Error generating SQL statement: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to generate SQL statement: {str(e)}"
-        )
+        logging.error(f"SQL generation error: {str(e)}")
+        return {
+            "status": "error",
+            "message": f"Failed to generate SQL: {str(e)}",
+            "raw_response": None
+        }
