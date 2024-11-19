@@ -2,7 +2,7 @@ import os
 from typing import Dict, Any
 import logging
 from .database_structure import SCHEMA, RELATIONSHIPS
-from groq_summary.summary import get_groq_client
+from groq import AsyncGroq
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -16,7 +16,7 @@ if not GROQ_API_KEY:
 
 # Initialize Groq client
 try:
-    client = get_groq_client()
+    client = AsyncGroq(api_key=GROQ_API_KEY)
 except Exception as e:
     logger.error(f"Failed to initialize Groq client: {str(e)}")
     raise RuntimeError(f"Failed to initialize Groq client: {str(e)}")
