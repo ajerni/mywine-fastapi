@@ -69,7 +69,7 @@ Format the response as JSON with 'query' and 'explanation' fields."""
                     "content": prompt
                 }
             ],
-            model="mixtral-8x7b-32768",
+            model="llama-3.1-70b-versatile",
             temperature=0.1,
             max_tokens=1000
         )
