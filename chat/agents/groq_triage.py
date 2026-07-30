@@ -1,7 +1,7 @@
 import os
 from dotenv import load_dotenv
 from groq import Groq
-from typing import List, Dict, Any
+from typing import List, Dict, Optional
 from database_connection.wine_queries import get_user_wine_collection, analyze_wine_collection
 from decimal import Decimal
 
@@ -58,38 +58,47 @@ Individual Wines:
     
     return summary
 
-async def get_agent_response(message: str, user_id: int) -> List[str]:
+async def get_agent_response(
+    message: str,
+    user_id: int,
+    history: Optional[List[Dict[str, str]]] = None,
+) -> List[str]:
     """
     Get response from Groq about the user's wine collection.
+
+    history: prior turns as [{role: "user"|"assistant", content: str}, ...]
+    (does not include the current message).
     """
-    # Get the user's wine collection
     wine_collection = await get_wine_collection_summary(user_id)
-    
-    # Create the system prompt
-    system_prompt = """You are a knowledgeable wine sommelier. Your responsibilities include:
+
+    system_prompt = f"""You are a knowledgeable wine sommelier. Your responsibilities include:
     - Answering questions about wines in the user's collection
     - Providing wine pairing recommendations
     - Sharing insights about wine regions, vintages, and varietals
-    
+
     Base your recommendations on the user's actual wine collection when possible.
     If asked about wines not in the collection, provide general expert advice.
-    
+
     Always reference specific wines from the collection when answering questions.
-    Be concise but informative in your responses. Do not ask questions."""
-    
-    # Create the complete context
-    user_prompt = f"""Here is the user's current wine collection:
+    Be concise but informative in your responses. Do not ask questions.
+    Use the conversation history to remember details the user has shared.
 
-{wine_collection}
+Here is the user's current wine collection:
 
-User question: {message}"""
+{wine_collection}"""
 
-    # Get completion from Groq
+    messages: List[Dict[str, str]] = [{"role": "system", "content": system_prompt}]
+
+    for turn in history or []:
+        role = turn.get("role")
+        content = (turn.get("content") or "").strip()
+        if role in ("user", "assistant") and content:
+            messages.append({"role": role, "content": content})
+
+    messages.append({"role": "user", "content": message})
+
     completion = client.chat.completions.create(
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt}
-        ],
+        messages=messages,
         #model="llama-3.1-70b-versatile",
         model="llama-3.1-8b-instant",
         temperature=0.5, # 0.7
