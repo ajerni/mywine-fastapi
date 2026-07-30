@@ -536,7 +536,15 @@ async def generate_sql_endpoint(
                 status_code=400,
                 detail="Question cannot be empty"
             )
-        return await generate_sql(question)
+        result = await generate_sql(question)
+        if result.get("status") != "success":
+            raise HTTPException(
+                status_code=502,
+                detail=result.get("message", "Failed to generate SQL")
+            )
+        return result
+    except HTTPException:
+        raise
     except Exception as e:
         logging.error(f"SQL generation error: {str(e)}")
         raise HTTPException(
